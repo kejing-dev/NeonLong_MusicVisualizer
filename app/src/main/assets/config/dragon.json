@@ -1,0 +1,15 @@
+{
+  "speedBase": 0.19,
+  "speedVol": 0.20,
+  "speedBass": 0.10,
+  "bodyLength": 3.05,
+  "spineSamples": 240,
+  "rollAmp": 0.22,
+  "maxStepS": 0.05,
+  "boundsCenterX": 0.0,
+  "boundsCenterY": 2.5,
+  "boundsCenterZ": 0.0,
+  "boundsHalfX": 18.0,
+  "boundsHalfY": 7.5,
+  "boundsHalfZ": 13.0
+}

@@ -28,7 +28,7 @@
             <!-- The unique name/id of a WindowContainer -->
             <meta-data
                 android:name="pico.spatial.windowcontainer.id"
-                android:value="YourVolumetricWindowContainer" />
+                android:value="dragon" />
 
             <!-- Form/style of the WindowContainer
                 "0": Form.Automatic, a system default setting, set to Form.Planar currently (default)
@@ -44,7 +44,7 @@
              -->
             <meta-data
                 android:name="pico.spatial.windowcontainer.defaultsize"
-                android:value="1000x1000x1000" />
+                android:value="1.2x0.47x0.87" />
 
             <!-- Unit of default size for the WindowContainer
                  "dp" — uses density-independent pixels (default)
@@ -52,7 +52,7 @@
              -->
             <meta-data
                 android:name="pico.spatial.windowcontainer.defaultsize.unit"
-                android:value="dp" />
+                android:value="meters" />
 
             <!-- Resize type of the WindowContainer
                  "0": ContainerResizeType.Automatic, a system default setting, set to ContainerResizeType.ContentMinSize currently (default)
