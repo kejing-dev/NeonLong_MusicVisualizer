@@ -29,8 +29,18 @@ class Spine(val steps: Int, private val rollAmp: Float) {
     /**
      * Recomputes every sample for head parameter [sHead] at time [t].
      * [undulation] scales the side and up waves (Reduce motion uses 0.6).
+     * [pull] ∈ [0, 1] draws the loop toward the user: z becomes z·(1 − pull) + pull·[frontZ],
+     * which moves the loop's center forward while shrinking it so it stays in bounds.
      */
-    fun update(sHead: Float, bodyLength: Float, t: Float, bass: Float, undulation: Float) {
+    fun update(
+        sHead: Float,
+        bodyLength: Float,
+        t: Float,
+        bass: Float,
+        undulation: Float,
+        pull: Float = 0f,
+        frontZ: Float = 0f,
+    ) {
         time = t
         for (k in 0..steps) {
             val u = k.toFloat() / steps
@@ -44,7 +54,8 @@ class Spine(val steps: Int, private val rollAmp: Float) {
             val i = k * 3
             samples[i] = base.x + side.x * sideAmt + up.x * upAmt
             samples[i + 1] = base.y + side.y * sideAmt + up.y * upAmt
-            samples[i + 2] = base.z + side.z * sideAmt + up.z * upAmt
+            val z = base.z + side.z * sideAmt + up.z * upAmt
+            samples[i + 2] = z * (1f - pull) + pull * frontZ
         }
     }
 

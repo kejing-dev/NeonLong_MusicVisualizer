@@ -26,6 +26,21 @@ data class DragonConfig(
     val boundsHalfX: Float = 18f,
     val boundsHalfY: Float = 7.5f,
     val boundsHalfZ: Float = 13f,
+    /** Light waves along the body: speed in spine units per second, Gaussian width d², lifetime. */
+    val waveSpeed: Float = 1.35f,
+    val waveWidth: Float = 0.0035f,
+    val waveLifeS: Float = 1.6f,
+    val waveMaxStrength: Float = 1.4f,
+    /** Touch ripples: strength, speed, extra glow on the touched segment and its decay rate, cooldown. */
+    val rippleStrength: Float = 1.0f,
+    val rippleSpeed: Float = 1.0f,
+    val rippleFlash: Float = 1.5f,
+    val rippleFlashDecay: Float = 4f,
+    val rippleCooldownS: Float = 0.25f,
+    /** Call: fraction the flight loop shifts toward the user, how long the pearl stays parked, blend rate. */
+    val callOffset: Float = 0.3f,
+    val pearlParkS: Float = 5.0f,
+    val callBlendRate: Float = 2.0f,
 ) {
     companion object {
         const val SEGMENTS = 27

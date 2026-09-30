@@ -29,6 +29,19 @@ import com.technomancer.neonlong.debug.DebugFlags
 import com.technomancer.neonlong.debug.EntitySpike
 import com.technomancer.neonlong.ecs.systems.DragonSystem
 import com.technomancer.neonlong.ecs.systems.InputSnapshotSystem
+import com.technomancer.neonlong.input.ControllerAdapter
+import com.technomancer.neonlong.input.HandTrackingAdapter
+import com.technomancer.neonlong.input.Haptics
+import com.technomancer.neonlong.input.InputEvents
+import com.technomancer.neonlong.logic.view.TurntableMath
+import com.technomancer.neonlong.render.Badge
+import com.technomancer.neonlong.render.Turntable
+import com.pico.spatial.core.ecs.Entity
+import com.pico.spatial.ui.foundation.gesture.TargetEntity
+import com.pico.spatial.ui.foundation.gesture.detectSpatialDragGesture
+import com.pico.spatial.ui.geometry.Offset3D
+import com.pico.spatial.ui.platform.PhysicalLengthConverter
+import androidx.compose.runtime.remember
 
 /** Container id of the dragon volume (also set in the manifest for the launch container). */
 const val DRAGON_CONTAINER = "dragon"
@@ -50,11 +63,16 @@ fun DragonVolume() {
     val stateOwner = LocalSpatialContainerStateOwner.current
     val lengths = LocalPhysicalLengthConverter.current
     val haptic = LocalHandControllerHaptic.current
+    val haptics = remember(haptic) { Haptics(haptic) }
 
     DisposableEffect(Unit) {
         registerSystem<InputSnapshotSystem>()
         registerSystem<DragonSystem>()
         if (spike) registerSystem<EntitySpike>()
+
+        val hands = HandTrackingAdapter().also { it.start() }
+        val controllers = ControllerAdapter(reg.events).also { it.start() }
+        reg.handTracking = hands
 
         val lifecycleObserver = LifecycleEventObserver { _, event ->
             when (event) {
@@ -88,6 +106,9 @@ fun DragonVolume() {
             if (spike) unregisterSystem<EntitySpike>()
             unregisterSystem<DragonSystem>()
             unregisterSystem<InputSnapshotSystem>()
+            reg.handTracking = null
+            hands.stop()
+            controllers.stop()
             reg.dragonEntities.destroy(reg.entities)
             EntitySpike.destroyAll()
             reg.session.onContainerClosed()
@@ -104,11 +125,25 @@ fun DragonVolume() {
                 if (meters > 0f) reg.volumeWidthMeters = meters
                 Log.i(LOG_TAG, "[boot] $DRAGON_CONTAINER size ${size.width}x${size.height} px = $meters m wide")
             }
-            .pointerInput(Unit) {
-                if (spike) {
-                    detectSpatialTapGesture(context) { tap ->
+            .pointerInput("tap") {
+                detectSpatialTapGesture(context) { tap ->
+                    if (spike) {
                         EntitySpike.onTap(tap.targetEntity, haptic)
+                    } else {
+                        onTap(tap.targetEntity, haptics)
                     }
+                }
+            }
+            .pointerInput("turntable") {
+                if (!spike) {
+                    val dragger = TurntableDrag(lengths, haptics)
+                    detectSpatialDragGesture(
+                        context,
+                        TargetEntity.any { it.getName() == Turntable.NAME },
+                        { _, _ -> dragger.start() },
+                        { _ -> dragger.end() },
+                        { _ -> dragger.end() },
+                    ) { drag -> dragger.move(drag.dragAmount) }
                 }
             },
         initial = { content, _ ->
@@ -116,9 +151,57 @@ fun DragonVolume() {
             if (spike) {
                 EntitySpike.attach(content)
             } else {
-                reg.dragonEntities.build(reg.sceneConfig, reg.dragonConfig, reg.entities)
-                    .forEach { content.addEntity(it) }
+                reg.dragonEntities.build(reg.sceneConfig, reg.entities).forEach { content.addEntity(it) }
             }
         },
     )
+}
+
+/** Routes a tap to a segment ripple or the badge, with a haptic pulse. Runs on the UI thread. */
+private fun onTap(target: Entity?, haptics: Haptics) {
+    val reg = ServiceRegistry
+    val segment = reg.dragonEntities.segmentIndexOf(target)
+    when {
+        segment >= 0 -> {
+            reg.events.post(InputEvents.SEGMENT_TOUCH, segment)
+            haptics.segment()
+        }
+        target != null && target.getName() == Badge.NAME -> {
+            reg.events.post(InputEvents.BADGE)
+            haptics.badge()
+        }
+    }
+}
+
+/**
+ * Turns a drag on the turntable into dragon yaw: sliding the hand sideways along the front of
+ * the ring turns the dragon by the same arc (gain 1), with a haptic tick every 15°.
+ */
+private class TurntableDrag(private val lengths: PhysicalLengthConverter, private val haptics: Haptics) {
+    private var loggedUnits = false
+
+    fun start() {
+        Log.i(LOG_TAG, "[input] turntable drag start")
+    }
+
+    fun end() {
+        Log.i(LOG_TAG, "[input] turntable yaw ${Math.toDegrees(ServiceRegistry.dragonYaw.toDouble()).toInt()}°")
+    }
+
+    fun move(amount: Offset3D) {
+        val reg = ServiceRegistry
+        // Drag amounts arrive in layout pixels; convert to meters.
+        val dxDp = with(lengths) { amount.x.toDp() }
+        val dx = lengths.dpToLength(dxDp, LengthUnit.Meters)
+        if (!loggedUnits) {
+            loggedUnits = true
+            Log.i(LOG_TAG, "[input] first drag step: raw x=${amount.x} → $dx m")
+        }
+        val radius = reg.sceneConfig.turntableRadiusFrac * reg.sceneConfig.defaultWidth
+        val before = reg.dragonYaw
+        // Sliding right along the front turns the front to the right: clockwise from above.
+        val after = TurntableMath.wrap(before - TurntableMath.yawFromSlide(dx, radius, reg.sceneConfig.turntableGain))
+        reg.dragonYaw = after
+        if (TurntableMath.ticksCrossed(before, after, 15f) > 0) haptics.turntableTick()
+    }
 }

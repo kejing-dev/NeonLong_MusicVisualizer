@@ -11,5 +11,17 @@
   "boundsCenterZ": 0.0,
   "boundsHalfX": 18.0,
   "boundsHalfY": 7.5,
-  "boundsHalfZ": 13.0
+  "boundsHalfZ": 13.0,
+  "waveSpeed": 1.35,
+  "waveWidth": 0.0035,
+  "waveLifeS": 1.6,
+  "waveMaxStrength": 1.4,
+  "rippleStrength": 1.0,
+  "rippleSpeed": 1.0,
+  "rippleFlash": 1.5,
+  "rippleFlashDecay": 4.0,
+  "rippleCooldownS": 0.25,
+  "callOffset": 0.3,
+  "pearlParkS": 5.0,
+  "callBlendRate": 2.0
 }

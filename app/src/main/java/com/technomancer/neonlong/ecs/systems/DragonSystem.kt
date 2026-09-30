@@ -4,18 +4,20 @@ import android.util.Log
 import com.pico.spatial.core.ecs.SceneUpdateContext
 import com.pico.spatial.core.ecs.System
 import com.pico.spatial.core.ecs.TransformComponent
+import com.pico.spatial.core.math.Color4
 import com.pico.spatial.core.math.Vector3
 import com.technomancer.neonlong.app.LOG_TAG
 import com.technomancer.neonlong.app.SdkMath
 import com.technomancer.neonlong.app.ServiceRegistry
+import com.technomancer.neonlong.input.InputEvents
 import com.technomancer.neonlong.logic.config.DragonConfig
 import com.technomancer.neonlong.logic.dragon.PartFamily
 import com.technomancer.neonlong.logic.dragon.PoseBuffer
 
 /**
- * Steps the dragon simulation and copies the dorsal segment poses onto the gray-box
- * entities. Skips the step while the container is hidden or paused, with no catch-up.
- * Logs its own cost every few seconds as `[perf]`.
+ * Applies queued input (touches, Call / Send / Flash), steps the dragon simulation and
+ * copies the dorsal segment poses and glow onto the gray-box entities. Skips the step while
+ * the container is hidden or paused, with no catch-up. Logs its own cost every few seconds.
  */
 class DragonSystem : System() {
     private val samplesNs = LongArray(PERF_WINDOW)
@@ -23,6 +25,7 @@ class DragonSystem : System() {
     private var sampleCount = 0
     private var lastLogNs = 0L
     private var wasRunning = false
+    private var smallPartsShown: Boolean? = null
 
     override fun update(context: SceneUpdateContext) {
         val reg = ServiceRegistry
@@ -31,9 +34,25 @@ class DragonSystem : System() {
         val start = java.lang.System.nanoTime()
 
         val width = reg.volumeWidthMeters.coerceIn(reg.sceneConfig.minWidth, reg.sceneConfig.maxWidth)
-        if (width != ents.appliedWidth) {
-            val k = ents.applyWidth(width, reg.sceneConfig, reg.dragonConfig)
-            Log.i(LOG_TAG, "[boot] volume width $width m, $k m per model unit")
+        val yaw = reg.dragonYaw
+        if (width != ents.appliedWidth || yaw != ents.appliedYaw) {
+            val widthChanged = width != ents.appliedWidth
+            val k = ents.place(width, yaw, reg.sceneConfig, reg.dragonConfig)
+            if (widthChanged) {
+                Log.i(LOG_TAG, "[boot] volume width $width m, $k m per model unit")
+                applyLod(width)
+            }
+        }
+
+        val sim = reg.simulation
+        reg.events.drain { kind, arg ->
+            when (kind) {
+                InputEvents.SEGMENT_TOUCH -> if (sim.touchSegment(arg)) Log.i(LOG_TAG, "[input] ripple from segment $arg")
+                InputEvents.CALL -> { sim.call(); Log.i(LOG_TAG, "[input] call") }
+                InputEvents.SEND -> { sim.send(); Log.i(LOG_TAG, "[input] send") }
+                InputEvents.FLASH -> { sim.flash(); Log.i(LOG_TAG, "[input] flash") }
+                InputEvents.BADGE -> Log.i(LOG_TAG, "[input] controls requested (badge)")
+            }
         }
 
         val running = reg.session.running
@@ -43,8 +62,9 @@ class DragonSystem : System() {
         }
         if (!running) return
 
-        reg.simulation.tick(context.deltaTime, reg.input, reg.pose)
+        sim.tick(context.deltaTime, reg.input, reg.pose)
         val t = reg.pose.transforms(PartFamily.SEG_DORSAL)
+        val a = reg.pose.appearance(PartFamily.SEG_DORSAL)
         for (i in 0 until DragonConfig.SEGMENTS) {
             val transform = ents.segments[i]?.components?.get(TransformComponent::class.java) ?: continue
             val o = i * PoseBuffer.TRANSFORM_STRIDE
@@ -52,8 +72,19 @@ class DragonSystem : System() {
             transform.setPosition(Vector3(t[o], t[o + 1], t[o + 2]))
             transform.setQuaternion(SdkMath.quat(t[o + 3], t[o + 4], t[o + 5], t[o + 6]))
             transform.setScaleVector(Vector3(t[o + 7], t[o + 8], t[o + 9]))
+            val c = i * PoseBuffer.APPEARANCE_STRIDE
+            ents.segmentMaterials[i]?.setEmissiveColor(Color4(a[c], a[c + 1], a[c + 2], 1f))
         }
         recordPerf(java.lang.System.nanoTime() - start)
+    }
+
+    /** Hides small parts in small volumes. Only logged until those parts exist. */
+    private fun applyLod(width: Float) {
+        val show = ServiceRegistry.lod.showSmallParts(width)
+        if (show != smallPartsShown) {
+            smallPartsShown = show
+            Log.i(LOG_TAG, "[boot] LOD: small parts ${if (show) "shown" else "hidden"} at $width m (whisker stride ${ServiceRegistry.lod.whiskerStride(width)})")
+        }
     }
 
     private fun recordPerf(ns: Long) {
