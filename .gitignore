@@ -31,3 +31,8 @@ google-services.json
 
 # Android Profiling
 *.hprof
+
+# Neon Lóng additions
+*.bundle
+app/build/generated/
+keystore.properties

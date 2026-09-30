@@ -30,3 +30,6 @@ dependencyResolutionManagement {
 rootProject.name = "Neon Lóng Music Visualizer"
 include(":app")
 include(":editor-asset")
+include(":game-logic")
+include(":tools:assetgen")
+include(":tools:demosynth")
