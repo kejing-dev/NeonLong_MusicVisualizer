@@ -23,4 +23,13 @@ class ConfigDefaultsTest {
 
     @Test
     fun comfort() = assertEquals(ComfortConfig(), ConfigCodec.decode(ComfortConfig.serializer(), read("comfort")))
+
+    @Test
+    fun audio() = assertEquals(AudioConfig(), ConfigCodec.decode(AudioConfig.serializer(), read("audio")))
+
+    @Test
+    fun flash() = assertEquals(FlashConfig(), ConfigCodec.decode(FlashConfig.serializer(), read("flash")))
+
+    @Test
+    fun palettes() = assertEquals(PaletteConfig(), ConfigCodec.decode(PaletteConfig.serializer(), read("palettes")))
 }

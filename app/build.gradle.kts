@@ -52,6 +52,12 @@ android {
         buildConfig = true
     }
 
+    // Models, textures and audio made by :tools:assetgen and :tools:demosynth at build time.
+    sourceSets["main"].assets.srcDir(layout.buildDirectory.dir("generated/neonlong/assets"))
+}
+
+tasks.named("preBuild") {
+    dependsOn(":tools:assetgen:generate", ":tools:demosynth:generate")
 }
 
 dependencies {

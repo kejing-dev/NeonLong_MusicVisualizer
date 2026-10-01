@@ -28,4 +28,22 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+    systemProperty("java.awt.headless", "true")
+}
+
+// Writes the generated models and textures into the app's generated assets, and the
+// triangle/texture report next to the other planning docs (outside the repository).
+val generate by tasks.registering(JavaExec::class) {
+    group = "neonlong"
+    description = "Generates the dragon's models and textures."
+    val assetsDir = rootProject.layout.projectDirectory.dir("app/build/generated/neonlong/assets")
+    val reportFile = File(rootDir.parentFile, "docs/asset-report.md")
+    classpath = sourceSets.main.get().runtimeClasspath
+    mainClass.set(application.mainClass)
+    jvmArgs("-Djava.awt.headless=true")
+    args(assetsDir.asFile.absolutePath, reportFile.absolutePath)
+    inputs.files(sourceSets.main.get().runtimeClasspath)
+    outputs.dir(assetsDir.dir("models"))
+    outputs.dir(assetsDir.dir("textures"))
+    outputs.file(reportFile)
 }

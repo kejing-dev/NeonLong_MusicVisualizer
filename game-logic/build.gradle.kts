@@ -24,4 +24,7 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+    // The beat-detection test reads the generated demo track and its kick list.
+    dependsOn(":tools:demosynth:generate")
+    testLogging { showStandardStreams = true }
 }

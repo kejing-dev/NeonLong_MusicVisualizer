@@ -28,7 +28,10 @@ import com.technomancer.neonlong.app.ServiceRegistry
 import com.technomancer.neonlong.debug.DebugFlags
 import com.technomancer.neonlong.debug.EntitySpike
 import com.technomancer.neonlong.ecs.systems.DragonSystem
+import com.technomancer.neonlong.ecs.systems.FiberMeshSystem
 import com.technomancer.neonlong.ecs.systems.InputSnapshotSystem
+import com.technomancer.neonlong.ecs.systems.PerfSystem
+import com.technomancer.neonlong.render.MeshLibrary
 import com.technomancer.neonlong.input.ControllerAdapter
 import com.technomancer.neonlong.input.HandTrackingAdapter
 import com.technomancer.neonlong.input.Haptics
@@ -68,7 +71,10 @@ fun DragonVolume() {
     DisposableEffect(Unit) {
         registerSystem<InputSnapshotSystem>()
         registerSystem<DragonSystem>()
+        registerSystem<FiberMeshSystem>()
+        registerSystem<PerfSystem>()
         if (spike) registerSystem<EntitySpike>()
+        reg.audio.start()
 
         val hands = HandTrackingAdapter().also { it.start() }
         val controllers = ControllerAdapter(reg.events).also { it.start() }
@@ -104,8 +110,11 @@ fun DragonVolume() {
             lifecycleOwner.lifecycle.removeObserver(lifecycleObserver)
             stateOwner.stateObservable.removeObserver(stateObserver)
             if (spike) unregisterSystem<EntitySpike>()
+            unregisterSystem<PerfSystem>()
+            unregisterSystem<FiberMeshSystem>()
             unregisterSystem<DragonSystem>()
             unregisterSystem<InputSnapshotSystem>()
+            reg.audio.release()
             reg.handTracking = null
             hands.stop()
             controllers.stop()
@@ -151,7 +160,9 @@ fun DragonVolume() {
             if (spike) {
                 EntitySpike.attach(content)
             } else {
-                reg.dragonEntities.build(reg.sceneConfig, reg.entities).forEach { content.addEntity(it) }
+                // The SDK loads models on the main thread only.
+                val library = MeshLibrary.load(context)
+                reg.dragonEntities.build(reg.sceneConfig, library, reg.entities).forEach { content.addEntity(it) }
             }
         },
     )

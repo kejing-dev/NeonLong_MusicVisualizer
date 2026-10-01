@@ -1,16 +1,20 @@
 package com.technomancer.neonlong.app
 
 import android.content.Context
+import com.technomancer.neonlong.audio.AudioEngine
 import com.technomancer.neonlong.config.ConfigLoader
+import com.technomancer.neonlong.input.HandTrackingAdapter
+import com.technomancer.neonlong.input.InputEvents
+import com.technomancer.neonlong.logic.config.AudioConfig
 import com.technomancer.neonlong.logic.config.ComfortConfig
 import com.technomancer.neonlong.logic.config.DragonConfig
+import com.technomancer.neonlong.logic.config.FlashConfig
+import com.technomancer.neonlong.logic.config.PaletteConfig
 import com.technomancer.neonlong.logic.config.SceneConfig
 import com.technomancer.neonlong.logic.dragon.DragonSimulation
 import com.technomancer.neonlong.logic.dragon.PoseBuffer
 import com.technomancer.neonlong.logic.input.InputSnapshot
 import com.technomancer.neonlong.logic.state.SessionState
-import com.technomancer.neonlong.input.HandTrackingAdapter
-import com.technomancer.neonlong.input.InputEvents
 import com.technomancer.neonlong.logic.view.Lod
 import com.technomancer.neonlong.render.DragonEntities
 
@@ -29,7 +33,17 @@ object ServiceRegistry {
         private set
     lateinit var comfortConfig: ComfortConfig
         private set
+    lateinit var audioConfig: AudioConfig
+        private set
+    lateinit var flashConfig: FlashConfig
+        private set
+    lateinit var paletteConfig: PaletteConfig
+        private set
     lateinit var simulation: DragonSimulation
+        private set
+    lateinit var audio: AudioEngine
+        private set
+    lateinit var lod: Lod
         private set
 
     val pose = PoseBuffer()
@@ -55,18 +69,23 @@ object ServiceRegistry {
     @Volatile
     var spikeEnabled = false
 
+    /** Debug only: start the demo as soon as the dragon is built. */
+    @Volatile
+    var autoPlay = false
+
     /** Reduce motion; a debug switch until the settings panel exists. */
     @Volatile
     var reducedMotion = false
-
-    lateinit var lod: Lod
-        private set
 
     fun init(context: Context) {
         dragonConfig = ConfigLoader.load(context, "dragon", DragonConfig.serializer(), DragonConfig())
         sceneConfig = ConfigLoader.load(context, "scene", SceneConfig.serializer(), SceneConfig())
         comfortConfig = ConfigLoader.load(context, "comfort", ComfortConfig.serializer(), ComfortConfig())
-        simulation = DragonSimulation(dragonConfig, comfortConfig)
+        audioConfig = ConfigLoader.load(context, "audio", AudioConfig.serializer(), AudioConfig())
+        flashConfig = ConfigLoader.load(context, "flash", FlashConfig.serializer(), FlashConfig())
+        paletteConfig = ConfigLoader.load(context, "palettes", PaletteConfig.serializer(), PaletteConfig())
+        simulation = DragonSimulation(dragonConfig, comfortConfig, flashConfig, paletteConfig)
+        audio = AudioEngine(context.applicationContext, audioConfig)
         lod = Lod(sceneConfig)
         volumeWidthMeters = sceneConfig.defaultWidth
     }

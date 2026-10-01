@@ -42,6 +42,14 @@ class Quat(var x: Float = 0f, var y: Float = 0f, var z: Float = 0f, var w: Float
         return normalize()
     }
 
+    /** Shortest rotation taking +Y onto the unit vector [d]. */
+    fun setFromUpTo(d: Vec3): Quat {
+        val dot = d.y
+        if (dot < -0.999999f) return set(1f, 0f, 0f, 0f) // opposite: half turn about X
+        // cross(Y, d) = (d.z, 0, −d.x)
+        return set(d.z, 0f, -d.x, 1f + dot).normalize()
+    }
+
     /** this = a · b (a and b may alias this). */
     fun mul(a: Quat, b: Quat): Quat = set(
         a.w * b.x + a.x * b.w + a.y * b.z - a.z * b.y,

@@ -1,0 +1,18 @@
+{
+  "fftSize": 4096,
+  "analysisRateHz": 60.0,
+  "smoothing": 0.7,
+  "minDb": -90.0,
+  "maxDb": -22.0,
+  "attackRate": 32.0,
+  "releaseRate": 7.0,
+  "beatAvgRate": 2.5,
+  "beatRatio": 1.16,
+  "beatOffset": 0.035,
+  "beatFloor": 0.22,
+  "beatMinInterval": 0.27,
+  "beatStrengthBoost": 0.25,
+  "beatPulseDecay": 6.0,
+  "idleBpm": 96.0,
+  "sensitivity": 1.0
+}

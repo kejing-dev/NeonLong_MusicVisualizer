@@ -1,0 +1,10 @@
+{
+  "maxFlashesPerSecond": 3,
+  "minOnsetIntervalS": 0.34,
+  "flashAttackS": 0.06,
+  "flashDecayS": 0.25,
+  "globalFlashGain": 0.35,
+  "reducedFlashGain": 0.10,
+  "reducedLocalPulse": 0.3,
+  "redGuard": 0.7
+}

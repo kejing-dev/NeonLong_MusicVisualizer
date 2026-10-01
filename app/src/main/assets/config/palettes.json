@@ -1,0 +1,8 @@
+{
+  "palettes": [
+    { "name": "Kowloon", "stop0": "#ff2e88", "stop1": "#a34dff", "stop2": "#18e7ff", "accent": "#ffb627" },
+    { "name": "Imperial", "stop0": "#ff2419", "stop1": "#ff7a14", "stop2": "#ffc93c", "accent": "#3df2ff" },
+    { "name": "Jade", "stop0": "#00ffa0", "stop1": "#12c8d6", "stop2": "#9d7bff", "accent": "#ff5fa8" }
+  ],
+  "fadeS": 0.4
+}

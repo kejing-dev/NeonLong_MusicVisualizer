@@ -12,8 +12,8 @@ import com.technomancer.neonlong.logic.input.HandFrame
 import com.technomancer.neonlong.logic.math.Vec3
 
 /**
- * First System each frame: fills the shared InputSnapshot and turns hand gestures into
- * Call / Send / Flash events. There is no audio yet, so the audio fields are cleared.
+ * First System each frame: fills the shared InputSnapshot from the newest audio analysis and turns hand gestures into
+ * Call / Send / Flash events.
  */
 class InputSnapshotSystem : System() {
     private val left = HandFrame()
@@ -21,17 +21,40 @@ class InputSnapshotSystem : System() {
     private val target = Vec3()
     private val classifier = GestureClassifier()
 
+    private var lastBeatCount = 0L
+
     override fun update(context: SceneUpdateContext) {
+        val start = java.lang.System.nanoTime()
+        readAudio()
+        readHands(context.deltaTime)
+        FramePerf.add(java.lang.System.nanoTime() - start)
+    }
+
+    /** Copies the newest analysis result; a beat counts once, on the first frame that sees it. */
+    private fun readAudio() {
         val reg = ServiceRegistry
         val input = reg.input
-        input.clearAudio()
+        val snap = reg.audio.snapshots.read()
+        java.lang.System.arraycopy(snap.bands, 0, input.bands, 0, input.bands.size)
+        input.bass = snap.bass
+        input.mid = snap.mid
+        input.high = snap.high
+        input.vol = snap.vol
+        input.beatPulse = snap.beatPulse
+        input.hasAudio = snap.hasAudio
+        input.playbackPositionS = snap.positionS
+        input.beatStrength = if (snap.beatCount != lastBeatCount) snap.lastBeatStrength else 0f
+        lastBeatCount = snap.beatCount
         input.reducedMotion = reg.reducedMotion
+    }
 
+    private fun readHands(dt: Float) {
+        val reg = ServiceRegistry
         val hands = reg.handTracking ?: return
         hands.read(left, right)
         if (!left.tracked && !right.tracked) return
         if (!dragonCenterWorld(target)) return
-        when (classifier.update(context.deltaTime, left, right, target)) {
+        when (classifier.update(dt, left, right, target)) {
             GestureClassifier.Gesture.CALL -> reg.events.post(InputEvents.CALL)
             GestureClassifier.Gesture.SEND -> reg.events.post(InputEvents.SEND)
             GestureClassifier.Gesture.CLAP -> reg.events.post(InputEvents.FLASH)
