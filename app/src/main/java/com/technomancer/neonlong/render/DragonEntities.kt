@@ -144,11 +144,11 @@ class DragonEntities {
         turntable = ring
 
         // Centered on the front of the ring, like a buckle the ring runs through.
-        val badgeParts = Badge.create(frontZ = rz, baseY = baseY, glyphPlate = lib.glyphPlate, glyph = lib.glyph)
+        val badgeParts = Badge.create(frontZ = rz, baseY = baseY, block = lib.block, glyphPlate = lib.glyphPlate, glyph = lib.glyph)
         badgeGlyph = badgeParts.glyphMaterial
         val badgeEntity = badgeParts.entity.apply {
             // Deeper than the tile so it reaches past the ring's grab area and gets the tap first.
-            components.set(touchable(Vector3(Badge.SIZE, Badge.SIZE, Badge.TOUCH_DEPTH)))
+            components.set(touchable(Badge.touchSize))
             components.set(InteractableComponent())
             components.set(HoverEffectComponent())
         }

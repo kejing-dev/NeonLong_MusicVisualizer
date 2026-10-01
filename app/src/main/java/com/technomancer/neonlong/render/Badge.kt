@@ -34,7 +34,17 @@ object Badge {
     /** The badge entity and the glyph's material, which pulses. */
     class Parts(val entity: Entity, val glyphMaterial: UnlitMaterial)
 
-    fun create(frontZ: Float, baseY: Float, glyphPlate: MeshResource, glyph: TextureResource?): Parts {
+    /**
+     * Touch area in the badge's own (scaled) units: the full face, and deeper than the tile so
+     * it reaches past the ring's grab area.
+     */
+    val touchSize get() = Vector3(1f, 1f, TOUCH_DEPTH / THICKNESS)
+
+    /**
+     * The badge is the unit GEN_Block [block] scaled to 48 × 48 × 20 mm; the glyph child is
+     * placed and sized in those scaled units.
+     */
+    fun create(frontZ: Float, baseY: Float, block: MeshResource, glyphPlate: MeshResource, glyph: TextureResource?): Parts {
         val tile = PhysicallyBasedMaterial.create(BlendingMode.OPAQUE).apply {
             setBaseColor(Color4(0.063f, 0.055f, 0.094f, 1f)) // #100e18, like the body metal
             setEmissiveColor(Color4(0.25f, 0.045f, 0.13f, 1f)) // a faint pink rim glow
@@ -47,15 +57,18 @@ object Badge {
             setName("${NAME}_Glyph")
             components.set(ModelComponent(glyphPlate, material))
             components.set(TransformComponent().apply {
-                // The plate mesh is a 1 m tile; scale it to the face, just in front of the tile.
-                setPosition(Vector3(0f, 0f, THICKNESS * 0.5f + 0.0006f))
-                setScaleVector(Vector3(SIZE * GLYPH_FRAC, SIZE * GLYPH_FRAC, 0.1f))
+                // Just in front of the tile's face (0.6 mm), covering [GLYPH_FRAC] of it.
+                setPosition(Vector3(0f, 0f, 0.5f + 0.0006f / THICKNESS))
+                setScaleVector(Vector3(GLYPH_FRAC, GLYPH_FRAC, 1f))
             })
         }
         val entity = Entity().apply {
             setName(NAME)
-            components.set(ModelComponent(MeshResource.createBox(Vector3(SIZE, SIZE, THICKNESS), 0f), tile))
-            components.set(TransformComponent().apply { setPosition(Vector3(0f, baseY, frontZ)) })
+            components.set(ModelComponent(block, tile))
+            components.set(TransformComponent().apply {
+                setPosition(Vector3(0f, baseY, frontZ))
+                setScaleVector(Vector3(SIZE, SIZE, THICKNESS))
+            })
             addChild(face)
         }
         return Parts(entity, material)
