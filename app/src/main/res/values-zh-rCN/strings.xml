@@ -1,0 +1,77 @@
+<resources>
+    <string name="app_name">霓虹龙</string>
+
+    <!-- 控制面板 -->
+    <string name="controls_title">霓虹龙</string>
+    <string name="now_playing">正在播放</string>
+    <string name="status_demo">演示曲 · 104 BPM · A 小调五声音阶</string>
+    <string name="status_idle">空闲</string>
+    <string name="status_time">%1$s / %2$s</string>
+    <string name="status_playing">播放中</string>
+    <string name="status_paused">已暂停</string>
+    <string name="play">播放</string>
+    <string name="pause">暂停</string>
+    <string name="restart">从头播放</string>
+
+    <string name="section_source">音源</string>
+    <string name="source_demo">演示曲</string>
+    <string name="source_file">加载音乐</string>
+    <string name="source_capture">其他应用</string>
+    <string name="source_mic">麦克风</string>
+    <string name="coming_soon">即将推出</string>
+
+    <string name="section_palette">配色</string>
+    <string name="palette_kowloon">九龙</string>
+    <string name="palette_imperial">皇城</string>
+    <string name="palette_jade">翡翠</string>
+
+    <string name="section_view">视角</string>
+    <string name="view_orbit">环绕</string>
+    <string name="view_ride">骑乘</string>
+    <string name="immersive_only">仅限沉浸模式</string>
+
+    <string name="section_sensitivity">灵敏度</string>
+
+    <string name="section_space">空间</string>
+    <string name="space_room">房间</string>
+    <string name="space_immersive">沉浸</string>
+
+    <string name="section_settings">设置</string>
+    <string name="open_settings">设置</string>
+    <string name="back">返回</string>
+
+    <!-- 设置 -->
+    <string name="settings_title">设置</string>
+    <string name="reduce_motion">减少动态效果</string>
+    <string name="reduce_motion_sub">飞行更慢，身体摆动更柔和</string>
+    <string name="reduce_flashing">减少闪烁</string>
+    <string name="reduce_flashing_sub">全身闪光更柔和、更慢</string>
+    <string name="seated">坐姿模式</string>
+    <string name="seated_sub">沉浸模式下降低视点</string>
+    <string name="spectrum_panel">频谱面板</string>
+    <string name="spectrum_panel_sub">在小窗口中显示各频段</string>
+    <string name="ui_sounds">界面音效</string>
+    <string name="ui_sounds_sub">点按时播放简短提示音</string>
+    <string name="about_privacy">关于与隐私</string>
+    <string name="about_body">霓虹龙将音乐化为光与动态。本应用不联网，也绝不录制或保存你的音频。</string>
+    <string name="show_safety">查看安全提示</string>
+
+    <!-- 频谱面板 -->
+    <string name="spectrum_title">频谱</string>
+    <string name="band_low">低频</string>
+    <string name="band_mid">中频</string>
+    <string name="band_high">高频</string>
+
+    <!-- 安全提示 -->
+    <string name="safety_title">开始之前</string>
+    <string name="safety_body">本应用会显示随音乐变化的闪光和图案。少数人在接触闪光时可能会发生癫痫，即使此前从未有过癫痫病史。如果感到头晕、视线模糊或肌肉抽搐，请停止使用并摘下头显。</string>
+    <string name="safety_limit">闪光的频率和亮度均受到限制。</string>
+    <string name="start">开始</string>
+
+    <!-- 提示 -->
+    <string name="toast_safety_first">请先阅读安全提示。</string>
+    <string name="toast_bad_file">无法播放该文件。请尝试 MP3、AAC、FLAC、OGG 或 WAV 格式。</string>
+
+    <!-- 徽章 -->
+    <string name="badge_hint">打开控制面板</string>
+</resources>

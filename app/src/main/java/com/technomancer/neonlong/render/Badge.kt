@@ -14,7 +14,7 @@ import com.technomancer.neonlong.render.FamilyRenderer.Look
 
 /**
  * The 龍 badge: a dark 48 mm metal tile at the front-bottom edge of the volume, centered on the
- * ring, with the glowing glyph on its front face. Tapping it plays or pauses the demo for now.
+ * ring, with the glowing glyph on its front face. Tapping it opens or closes the control panel.
  */
 object Badge {
     const val NAME = "PH_Badge"
@@ -26,17 +26,25 @@ object Badge {
     /** The glyph fills this share of the tile's face. */
     private const val GLYPH_FRAC = 0.8f
 
-    fun create(frontZ: Float, baseY: Float, glyphPlate: MeshResource, glyph: TextureResource?): Entity {
+    /** Glyph color, Kowloon stop0 #ff2e88, at the steady brightness. */
+    const val GLOW_R = 1.0f
+    const val GLOW_G = 0.18f
+    const val GLOW_B = 0.53f
+
+    /** The badge entity and the glyph's material, which pulses. */
+    class Parts(val entity: Entity, val glyphMaterial: UnlitMaterial)
+
+    fun create(frontZ: Float, baseY: Float, glyphPlate: MeshResource, glyph: TextureResource?): Parts {
         val tile = PhysicallyBasedMaterial.create(BlendingMode.OPAQUE).apply {
             setBaseColor(Color4(0.063f, 0.055f, 0.094f, 1f)) // #100e18, like the body metal
             setEmissiveColor(Color4(0.25f, 0.045f, 0.13f, 1f)) // a faint pink rim glow
             setMetallic(0.75f)
             setRoughness(0.33f)
         }
+        val material = Looks.material(Look.GLYPH, glyph) as UnlitMaterial
+        material.setBaseColor(Color4(GLOW_R, GLOW_G, GLOW_B, 1f))
         val face = Entity().apply {
             setName("${NAME}_Glyph")
-            val material = Looks.material(Look.GLYPH, glyph) as UnlitMaterial
-            material.setBaseColor(Color4(1.0f, 0.18f, 0.53f, 1f)) // Kowloon stop0 #ff2e88
             components.set(ModelComponent(glyphPlate, material))
             components.set(TransformComponent().apply {
                 // The plate mesh is a 1 m tile; scale it to the face, just in front of the tile.
@@ -44,11 +52,12 @@ object Badge {
                 setScaleVector(Vector3(SIZE * GLYPH_FRAC, SIZE * GLYPH_FRAC, 0.1f))
             })
         }
-        return Entity().apply {
+        val entity = Entity().apply {
             setName(NAME)
             components.set(ModelComponent(MeshResource.createBox(Vector3(SIZE, SIZE, THICKNESS), 0f), tile))
             components.set(TransformComponent().apply { setPosition(Vector3(0f, baseY, frontZ)) })
             addChild(face)
         }
+        return Parts(entity, material)
     }
 }

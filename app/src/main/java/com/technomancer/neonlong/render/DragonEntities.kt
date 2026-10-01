@@ -8,6 +8,8 @@ import com.pico.spatial.core.ecs.InteractableComponent
 import com.pico.spatial.core.ecs.TransformComponent
 import com.pico.spatial.core.ecs.resource.PhysicsMaterialResource
 import com.pico.spatial.core.ecs.resource.ShapeResource
+import com.pico.spatial.core.ecs.resource.UnlitMaterial
+import com.pico.spatial.core.math.Color4
 import com.pico.spatial.core.math.Vector3
 import com.technomancer.neonlong.app.EntityRegistry
 import com.technomancer.neonlong.app.LOG_TAG
@@ -15,12 +17,15 @@ import com.technomancer.neonlong.app.SdkMath
 import com.technomancer.neonlong.ecs.components.SegmentTouchComponent
 import com.technomancer.neonlong.logic.config.DragonConfig
 import com.technomancer.neonlong.logic.config.SceneConfig
+import com.technomancer.neonlong.logic.config.UiConfig
 import com.technomancer.neonlong.logic.dragon.BodyLayout
 import com.technomancer.neonlong.logic.dragon.Fibers
 import com.technomancer.neonlong.render.FamilyRenderer.Look
 import com.technomancer.neonlong.logic.dragon.PartFamily
 import com.technomancer.neonlong.logic.dragon.PoseBuffer
 import kotlinx.coroutines.yield
+import kotlin.math.PI
+import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -36,6 +41,8 @@ class DragonEntities {
         private set
     var badge: Entity? = null
         private set
+    private var badgeGlyph: UnlitMaterial? = null
+    private var badgeGain = -1f
     private var lightRig: Entity? = null
 
     private var parts: List<PartRenderer> = emptyList()
@@ -137,7 +144,9 @@ class DragonEntities {
         turntable = ring
 
         // Centered on the front of the ring, like a buckle the ring runs through.
-        val badgeEntity = Badge.create(frontZ = rz, baseY = baseY, glyphPlate = lib.glyphPlate, glyph = lib.glyph).apply {
+        val badgeParts = Badge.create(frontZ = rz, baseY = baseY, glyphPlate = lib.glyphPlate, glyph = lib.glyph)
+        badgeGlyph = badgeParts.glyphMaterial
+        val badgeEntity = badgeParts.entity.apply {
             // Deeper than the tile so it reaches past the ring's grab area and gets the tap first.
             components.set(touchable(Vector3(Badge.SIZE, Badge.SIZE, Badge.TOUCH_DEPTH)))
             components.set(InteractableComponent())
@@ -192,6 +201,20 @@ class DragonEntities {
         entity?.components?.get(SegmentTouchComponent::class.java)?.segment ?: -1
 
     /** Destroys everything built by [build]. */
+    /**
+     * Pulses the badge glyph at [UiConfig.badgePulseHz] with [UiConfig.badgePulseGain] while
+     * [pulsing]; otherwise holds it steady. [timeS] is the simulation time.
+     */
+    fun updateBadge(timeS: Float, pulsing: Boolean, ui: UiConfig) {
+        val m = badgeGlyph ?: return
+        val gain = if (pulsing) 1f + ui.badgePulseGain * sin(2f * PI.toFloat() * ui.badgePulseHz * timeS) else 1f
+        if (abs(gain - badgeGain) < 0.01f) return
+        badgeGain = gain
+        // Scaled so the brightest point of the pulse is the full glyph color.
+        val k = gain / (1f + ui.badgePulseGain)
+        m.setBaseColor(Color4(Badge.GLOW_R * k, Badge.GLOW_G * k, Badge.GLOW_B * k, 1f))
+    }
+
     fun destroy(registry: EntityRegistry) {
         registry.remove(ROOT)
         registry.remove(Turntable.NAME)
@@ -204,6 +227,8 @@ class DragonEntities {
         root = null
         turntable = null
         badge = null
+        badgeGlyph = null
+        badgeGain = -1f
         parts = emptyList()
         tubes = emptyList()
         Log.i(LOG_TAG, "[boot] dragon entities destroyed")

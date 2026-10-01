@@ -1,0 +1,8 @@
+{
+  "badgePulseHz": 1.0,
+  "badgePulseGain": 0.2,
+  "spectrumHz": 30.0,
+  "uiSfxGainDb": -6.0,
+  "toastS": 3.0,
+  "statusRefreshS": 0.25
+}

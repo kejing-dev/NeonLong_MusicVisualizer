@@ -72,6 +72,7 @@ dependencies {
     implementation(libs.androidx.ui.tooling)
     implementation(libs.androidx.annotation)
     implementation(libs.androidx.appcompat)
+    implementation(libs.androidx.datastore.preferences)
     implementation(project(":editor-asset"))
     implementation(project(":game-logic"))
     testImplementation(libs.junit)

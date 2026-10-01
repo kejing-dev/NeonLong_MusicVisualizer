@@ -3,20 +3,22 @@ package com.technomancer.neonlong.ecs.systems
 import android.util.Log
 import com.pico.spatial.core.ecs.SceneUpdateContext
 import com.pico.spatial.core.ecs.System
-import com.technomancer.neonlong.BuildConfig
 import com.technomancer.neonlong.app.LOG_TAG
 import com.technomancer.neonlong.app.ServiceRegistry
+import com.technomancer.neonlong.audio.AudioEngine
 import com.technomancer.neonlong.input.InputEvents
+import com.technomancer.neonlong.logic.state.Settings
+import com.technomancer.neonlong.logic.state.SettingsModel
 
 /**
- * Applies queued input (touches, badge, Call / Send / Flash), steps the dragon simulation
+ * Applies queued input (touches, transport, Call / Send / Flash) and changed settings, steps the dragon simulation
  * and copies the rigid body parts onto their entities. Skips the step while the container
  * is hidden or paused, with no catch-up; hiding also pauses the demo track.
  */
 class DragonSystem : System() {
     private var wasRunning = false
     private var smallPartsShown: Boolean? = null
-    private var lastBadgeTapNs = 0L
+    private var appliedSettings: Settings? = null
 
     override fun update(context: SceneUpdateContext) {
         val reg = ServiceRegistry
@@ -35,7 +37,13 @@ class DragonSystem : System() {
             }
         }
 
-        if (reg.autoPlay) {
+        val settings = reg.settings.current
+        if (settings !== appliedSettings) {
+            SettingsModel.applyToSimulation(settings, reg.simulation, reg.input)
+            appliedSettings = settings
+        }
+
+        if (reg.autoPlay && settings.safetySeen) {
             reg.autoPlay = false
             reg.audio.play(ents.root)
         }
@@ -47,7 +55,8 @@ class DragonSystem : System() {
                 InputEvents.CALL -> { sim.call(); Log.i(LOG_TAG, "[input] call") }
                 InputEvents.SEND -> { sim.send(); Log.i(LOG_TAG, "[input] send") }
                 InputEvents.FLASH -> { sim.flash(); Log.i(LOG_TAG, "[input] flash") }
-                InputEvents.BADGE -> onBadge()
+                InputEvents.PLAY_PAUSE -> if (reg.settings.current.safetySeen) reg.audio.togglePlay(ents.root)
+                InputEvents.RESTART -> reg.audio.restart()
             }
         }
 
@@ -61,23 +70,12 @@ class DragonSystem : System() {
 
         sim.tick(context.deltaTime, reg.input, reg.pose)
         ents.applyParts(reg.pose)
+        // The badge pulses until the panel has been opened once, while nothing plays.
+        val pulsing = !reg.ui.panelOpenedOnce && reg.audio.state != AudioEngine.State.PLAYING
+        ents.updateBadge(sim.time, pulsing, reg.uiConfig)
         val ns = java.lang.System.nanoTime() - start
         FramePerf.add(ns)
         FramePerf.currentDragonNs = ns
-    }
-
-    /** Badge: play or pause the demo. In debug builds a double tap also cycles the palette. */
-    private fun onBadge() {
-        val reg = ServiceRegistry
-        val now = java.lang.System.nanoTime()
-        if (BuildConfig.DEBUG && now - lastBadgeTapNs < DOUBLE_TAP_NS) {
-            val sim = reg.simulation
-            val next = (sim.palette.index + 1) % sim.palette.count
-            sim.selectPalette(next)
-            Log.i(LOG_TAG, "[input] palette ${sim.palette.nameOf(next)} (debug double tap)")
-        }
-        lastBadgeTapNs = now
-        reg.audio.togglePlay(reg.dragonEntities.root)
     }
 
     /** Hides small parts in small volumes. Only logged until those parts exist. */
@@ -87,9 +85,5 @@ class DragonSystem : System() {
             smallPartsShown = show
             Log.i(LOG_TAG, "[boot] LOD: small parts ${if (show) "shown" else "hidden"} at $width m (whisker stride ${ServiceRegistry.lod.whiskerStride(width)})")
         }
-    }
-
-    private companion object {
-        const val DOUBLE_TAP_NS = 400_000_000L
     }
 }

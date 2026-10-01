@@ -21,6 +21,10 @@ class SpatialDemoPlayer(private val samples: FloatArray, private val sampleRate:
     val spatial: Boolean
 
     @Volatile private var running = true
+    /** Set by [restart]; the writer starts again from the first sample. */
+    @Volatile private var restartRequested = false
+    /** Playback head at the last restart, so positions count from there. */
+    @Volatile private var headBase = 0L
     @Volatile private var playing = false
     private val lock = Object()
     private val writer: Thread
@@ -74,10 +78,20 @@ class SpatialDemoPlayer(private val samples: FloatArray, private val sampleRate:
 
     val isPlaying: Boolean get() = playing
 
+    /** Drops what's queued and continues from the first sample, playing or paused as before. */
+    fun restart() {
+        val wasPlaying = playing
+        playing = false
+        try { track.pause(); track.flush() } catch (_: Throwable) {}
+        headBase = track.playbackHeadPosition.toLong() and 0xffffffffL
+        restartRequested = true
+        if (wasPlaying) play()
+    }
+
     /** Index into the loop of the sample being heard now. */
     fun positionIndex(): Int {
-        val head = track.playbackHeadPosition.toLong() and 0xffffffffL
-        return (head % samples.size).toInt()
+        val head = (track.playbackHeadPosition.toLong() and 0xffffffffL) - headBase
+        return Math.floorMod(head, samples.size.toLong()).toInt()
     }
 
     fun release() {
@@ -98,6 +112,10 @@ class SpatialDemoPlayer(private val samples: FloatArray, private val sampleRate:
                 while (running && !playing) lock.wait()
             }
             if (!running) break
+            if (restartRequested) {
+                restartRequested = false
+                cursor = 0
+            }
             for (i in 0 until CHUNK) {
                 chunk[i] = samples[cursor]
                 cursor++

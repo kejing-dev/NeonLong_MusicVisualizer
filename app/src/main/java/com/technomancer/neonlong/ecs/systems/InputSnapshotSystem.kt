@@ -45,7 +45,8 @@ class InputSnapshotSystem : System() {
         input.playbackPositionS = snap.positionS
         input.beatStrength = if (snap.beatCount != lastBeatCount) snap.lastBeatStrength else 0f
         lastBeatCount = snap.beatCount
-        input.reducedMotion = reg.reducedMotion
+        input.reducedMotion = reg.reducedMotion || reg.settings.current.reduceMotion
+        reg.spectrumForPanel.copyFrom(snap)
         val width = reg.volumeWidthMeters
         input.showSmallParts = reg.lod.showSmallParts(width)
         input.whiskerStride = reg.lod.whiskerStride(width)

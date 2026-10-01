@@ -1,3 +1,77 @@
 <resources>
     <string name="app_name">Neon Lóng</string>
+
+    <!-- Control panel -->
+    <string name="controls_title">Neon Lóng</string>
+    <string name="now_playing">Now playing</string>
+    <string name="status_demo">Demo · 104 BPM · A minor pentatonic</string>
+    <string name="status_idle">Idle</string>
+    <string name="status_time">%1$s / %2$s</string>
+    <string name="status_playing">Playing</string>
+    <string name="status_paused">Paused</string>
+    <string name="play">Play</string>
+    <string name="pause">Pause</string>
+    <string name="restart">Restart</string>
+
+    <string name="section_source">Source</string>
+    <string name="source_demo">Demo track</string>
+    <string name="source_file">Load music</string>
+    <string name="source_capture">Other apps</string>
+    <string name="source_mic">Microphone</string>
+    <string name="coming_soon">Coming soon</string>
+
+    <string name="section_palette">Palette</string>
+    <string name="palette_kowloon">Kowloon</string>
+    <string name="palette_imperial">Imperial</string>
+    <string name="palette_jade">Jade</string>
+
+    <string name="section_view">View</string>
+    <string name="view_orbit">Orbit</string>
+    <string name="view_ride">Ride</string>
+    <string name="immersive_only">Immersive only</string>
+
+    <string name="section_sensitivity">Sensitivity</string>
+
+    <string name="section_space">Space</string>
+    <string name="space_room">Room</string>
+    <string name="space_immersive">Immersive</string>
+
+    <string name="section_settings">Settings</string>
+    <string name="open_settings">Settings</string>
+    <string name="back">Back</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="reduce_motion">Reduce motion</string>
+    <string name="reduce_motion_sub">Slower flight and gentler body waves</string>
+    <string name="reduce_flashing">Reduce flashing</string>
+    <string name="reduce_flashing_sub">Softer, slower whole-dragon flashes</string>
+    <string name="seated">Seated</string>
+    <string name="seated_sub">Lower viewpoints in Immersive mode</string>
+    <string name="spectrum_panel">Spectrum panel</string>
+    <string name="spectrum_panel_sub">Show the bands in a small window</string>
+    <string name="ui_sounds">Interface sounds</string>
+    <string name="ui_sounds_sub">Short sounds when you press things</string>
+    <string name="about_privacy">About and privacy</string>
+    <string name="about_body">Neon Lóng turns music into light and motion. It doesn\'t use the internet and never records or stores your audio.</string>
+    <string name="show_safety">Read the safety notice</string>
+
+    <!-- Spectrum panel -->
+    <string name="spectrum_title">Spectrum</string>
+    <string name="band_low">Low</string>
+    <string name="band_mid">Mid</string>
+    <string name="band_high">High</string>
+
+    <!-- Safety notice -->
+    <string name="safety_title">Before you start</string>
+    <string name="safety_body">This app shows flashing lights and patterns that move with music. A small number of people may have seizures when exposed to flashing lights, even without a history of epilepsy. If you feel dizzy, have blurred vision or twitching, stop using the app and take off the headset.</string>
+    <string name="safety_limit">Flashes are limited in rate and brightness.</string>
+    <string name="start">Start</string>
+
+    <!-- Toasts -->
+    <string name="toast_safety_first">Read the safety notice first.</string>
+    <string name="toast_bad_file">Couldn\'t play that file. Try MP3, AAC, FLAC, OGG or WAV.</string>
+
+    <!-- Badge -->
+    <string name="badge_hint">Open controls</string>
 </resources>

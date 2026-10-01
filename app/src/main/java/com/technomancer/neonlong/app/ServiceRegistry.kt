@@ -2,6 +2,7 @@ package com.technomancer.neonlong.app
 
 import android.content.Context
 import com.technomancer.neonlong.audio.AudioEngine
+import com.technomancer.neonlong.audio.UiSfx
 import com.technomancer.neonlong.config.ConfigLoader
 import com.technomancer.neonlong.input.HandTrackingAdapter
 import com.technomancer.neonlong.input.InputEvents
@@ -11,6 +12,10 @@ import com.technomancer.neonlong.logic.config.DragonConfig
 import com.technomancer.neonlong.logic.config.FlashConfig
 import com.technomancer.neonlong.logic.config.PaletteConfig
 import com.technomancer.neonlong.logic.config.SceneConfig
+import com.technomancer.neonlong.logic.config.UiConfig
+import com.technomancer.neonlong.logic.audio.SpectrumSnapshot
+import com.technomancer.neonlong.logic.state.SettingsModel
+import com.technomancer.neonlong.settings.SettingsStore
 import com.technomancer.neonlong.logic.dragon.DragonSimulation
 import com.technomancer.neonlong.logic.dragon.PoseBuffer
 import com.technomancer.neonlong.logic.input.InputSnapshot
@@ -45,6 +50,18 @@ object ServiceRegistry {
         private set
     lateinit var lod: Lod
         private set
+    lateinit var uiConfig: UiConfig
+        private set
+    lateinit var settings: SettingsStore
+        private set
+    lateinit var uiSfx: UiSfx
+        private set
+
+    /** Which windows are open, toasts. */
+    val ui = UiState()
+
+    /** Latest analysis for the spectrum panel, copied each frame by the input System. */
+    val spectrumForPanel = SpectrumSnapshot()
 
     val pose = PoseBuffer()
     val input = InputSnapshot()
@@ -73,7 +90,7 @@ object ServiceRegistry {
     @Volatile
     var autoPlay = false
 
-    /** Reduce motion; a debug switch until the settings panel exists. */
+    /** Debug only: forces Reduce motion on, whatever the setting says. */
     @Volatile
     var reducedMotion = false
 
@@ -84,9 +101,16 @@ object ServiceRegistry {
         audioConfig = ConfigLoader.load(context, "audio", AudioConfig.serializer(), AudioConfig())
         flashConfig = ConfigLoader.load(context, "flash", FlashConfig.serializer(), FlashConfig())
         paletteConfig = ConfigLoader.load(context, "palettes", PaletteConfig.serializer(), PaletteConfig())
+        uiConfig = ConfigLoader.load(context, "ui", UiConfig.serializer(), UiConfig())
+        settings = SettingsStore(context, paletteConfig.palettes.size, sceneConfig.minWidth, sceneConfig.maxWidth)
+        settings.loadBlocking()
         simulation = DragonSimulation(dragonConfig, comfortConfig, flashConfig, paletteConfig)
-        audio = AudioEngine(context.applicationContext, audioConfig)
+        // Saved settings reach the dragon before its first frame.
+        SettingsModel.applyToSimulation(settings.current, simulation, input)
+        audio = AudioEngine(context.applicationContext, audioConfig) { settings.current }
+        uiSfx = UiSfx(uiConfig) { settings.current.uiSounds }
         lod = Lod(sceneConfig)
-        volumeWidthMeters = sceneConfig.defaultWidth
+        val savedWidth = settings.current.volumeWidth
+        volumeWidthMeters = if (savedWidth > 0f) savedWidth else sceneConfig.defaultWidth
     }
 }

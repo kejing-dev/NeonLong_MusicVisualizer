@@ -44,7 +44,10 @@ import com.pico.spatial.ui.foundation.gesture.TargetEntity
 import com.pico.spatial.ui.foundation.gesture.detectSpatialDragGesture
 import com.pico.spatial.ui.geometry.Offset3D
 import com.pico.spatial.ui.platform.PhysicalLengthConverter
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import com.pico.spatial.ui.platform.containers.LocalSpatialNavigator
+import com.pico.spatial.ui.platform.containers.SpatialNavigator
 
 /** Container id of the dragon volume (also set in the manifest for the launch container). */
 const val DRAGON_CONTAINER = "dragon"
@@ -67,6 +70,13 @@ fun DragonVolume() {
     val lengths = LocalPhysicalLengthConverter.current
     val haptic = LocalHandControllerHaptic.current
     val haptics = remember(haptic) { Haptics(haptic) }
+    val navigator = LocalSpatialNavigator.current
+
+    // First launch: the safety notice comes up before anything can play.
+    LaunchedEffect(Unit) {
+        if (!reg.settings.current.safetySeen) navigator.openSafety()
+        if (reg.settings.current.spectrumPanel) navigator.openSpectrum()
+    }
 
     DisposableEffect(Unit) {
         registerSystem<InputSnapshotSystem>()
@@ -118,6 +128,7 @@ fun DragonVolume() {
             reg.handTracking = null
             hands.stop()
             controllers.stop()
+            reg.uiSfx.detach()
             reg.dragonEntities.destroy(reg.entities)
             EntitySpike.destroyAll()
             reg.session.onContainerClosed()
@@ -131,7 +142,10 @@ fun DragonVolume() {
             .onSizeChanged { size ->
                 val widthDp = with(lengths) { size.width.toDp() }
                 val meters = lengths.dpToLength(widthDp, LengthUnit.Meters)
-                if (meters > 0f) reg.volumeWidthMeters = meters
+                if (meters > 0f) {
+                    reg.volumeWidthMeters = meters
+                    reg.settings.update { it.copy(volumeWidth = meters) }
+                }
                 Log.i(LOG_TAG, "[boot] $DRAGON_CONTAINER size ${size.width}x${size.height} px = $meters m wide")
             }
             .pointerInput("tap") {
@@ -139,7 +153,7 @@ fun DragonVolume() {
                     if (spike) {
                         EntitySpike.onTap(tap.targetEntity, haptic)
                     } else {
-                        onTap(tap.targetEntity, haptics)
+                        onTap(tap.targetEntity, haptics, navigator)
                     }
                 }
             }
@@ -149,7 +163,7 @@ fun DragonVolume() {
                     detectSpatialDragGesture(
                         context,
                         TargetEntity.any { it.getName() == Turntable.NAME },
-                        { _, _ -> dragger.start() },
+                        { _, _ -> dragger.start(); reg.uiSfx.select3D() },
                         { _ -> dragger.end() },
                         { _ -> dragger.end() },
                     ) { drag -> dragger.move(drag.dragAmount) }
@@ -163,23 +177,32 @@ fun DragonVolume() {
                 // The SDK loads models on the main thread only.
                 val library = MeshLibrary.load(context)
                 reg.dragonEntities.build(reg.sceneConfig, library, reg.entities, reg.pose.fibers).forEach { content.addEntity(it) }
+                val badge = reg.dragonEntities.badge
+                val root = reg.dragonEntities.root
+                if (badge != null && root != null) reg.uiSfx.attach(badge, root)
             }
         },
     )
 }
 
-/** Routes a tap to a segment ripple or the badge, with a haptic pulse. Runs on the UI thread. */
-private fun onTap(target: Entity?, haptics: Haptics) {
+/**
+ * Routes a tap to a segment ripple or the badge (which opens or closes the control panel),
+ * with a haptic pulse and a sound. Runs on the UI thread.
+ */
+private fun onTap(target: Entity?, haptics: Haptics, navigator: SpatialNavigator) {
     val reg = ServiceRegistry
     val segment = reg.dragonEntities.segmentIndexOf(target)
     when {
         segment >= 0 -> {
             reg.events.post(InputEvents.SEGMENT_TOUCH, segment)
             haptics.segment()
+            reg.uiSfx.select3D()
         }
         target != null && target.getName() == Badge.NAME -> {
-            reg.events.post(InputEvents.BADGE)
+            if (reg.ui.controlsOpen) navigator.closeControls() else navigator.openControls()
             haptics.badge()
+            reg.uiSfx.select3D()
+            Log.i(LOG_TAG, "[input] badge: controls ${if (reg.ui.controlsOpen) "close" else "open"}")
         }
     }
 }

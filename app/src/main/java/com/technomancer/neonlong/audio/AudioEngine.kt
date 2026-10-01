@@ -10,13 +10,20 @@ import com.technomancer.neonlong.logic.audio.SpectrumSnapshot
 import com.technomancer.neonlong.logic.audio.TripleBuffer
 import com.technomancer.neonlong.logic.audio.WavReader
 import com.technomancer.neonlong.logic.config.AudioConfig
+import com.technomancer.neonlong.logic.state.Settings
+import com.technomancer.neonlong.logic.state.SettingsModel
 
 /**
  * Owns the music source and the analysis thread. The analysis runs at a fixed rate and
  * publishes a [SpectrumSnapshot] per hop: from the demo track while it plays (the window
  * ends at the sample being heard), otherwise from the idle breathing generator.
  */
-class AudioEngine(private val context: Context, private val config: AudioConfig) {
+class AudioEngine(
+    private val context: Context,
+    private val config: AudioConfig,
+    /** The user's settings, read by the analysis thread for the band sensitivity. */
+    private val settings: () -> Settings,
+) {
     enum class State { IDLE, PLAYING, PAUSED }
 
     val snapshots = TripleBuffer { SpectrumSnapshot() }
@@ -26,6 +33,14 @@ class AudioEngine(private val context: Context, private val config: AudioConfig)
 
     @Volatile private var demo: DecodedAudio? = null
     @Volatile private var player: SpatialDemoPlayer? = null
+
+    /** Length of the demo loop in seconds, once it has been loaded. */
+    @Volatile var durationS = 0.0
+        private set
+
+    /** Where playback is in the loop, in seconds. */
+    @Volatile var positionS = 0.0
+        private set
 
     /** Average analysis cost per hop over the last reporting window, in microseconds. */
     @Volatile var analysisAvgUs = 0L
@@ -54,6 +69,14 @@ class AudioEngine(private val context: Context, private val config: AudioConfig)
         Log.i(LOG_TAG, "[audio] demo playing")
     }
 
+    /** Back to the start of the loop, keeping the play/pause state. */
+    fun restart() {
+        val p = player ?: return
+        p.restart()
+        positionS = 0.0
+        Log.i(LOG_TAG, "[audio] demo restarted")
+    }
+
     fun pause() {
         if (state != State.PLAYING) return
         player?.pause()
@@ -76,7 +99,10 @@ class AudioEngine(private val context: Context, private val config: AudioConfig)
     }
 
     private fun createPlayer(dragonRoot: Entity?): SpatialDemoPlayer? = try {
-        val audio = demo ?: context.assets.open("audio/demo_104bpm.wav").use { WavReader.read(it) }.also { demo = it }
+        val audio = demo ?: context.assets.open("audio/demo_104bpm.wav").use { WavReader.read(it) }.also {
+            demo = it
+            durationS = it.samples.size.toDouble() / it.sampleRate
+        }
         SpatialDemoPlayer(audio.samples, audio.sampleRate, dragonRoot).also { player = it }
     } catch (e: Throwable) {
         Log.e(LOG_TAG, "[audio] can't start the demo: ${e.message}")
@@ -98,9 +124,11 @@ class AudioEngine(private val context: Context, private val config: AudioConfig)
             val p = player
             val audio = demo
             val out = snapshots.writeSlot
+            SettingsModel.applyToAnalysis(settings(), pipeline.features)
             if (state == State.PLAYING && p != null && audio != null) {
                 if (!wasPlaying) pipeline.reset()
                 val end = p.positionIndex()
+                positionS = end.toDouble() / audio.sampleRate
                 pipeline.hopAudio(audio.samples, end, dt, end.toDouble() / audio.sampleRate, out)
                 wasPlaying = true
             } else {

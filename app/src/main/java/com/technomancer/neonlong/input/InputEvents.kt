@@ -45,6 +45,7 @@ class InputEvents(capacity: Int = 64) {
         const val CALL = 2
         const val SEND = 3
         const val FLASH = 4
-        const val BADGE = 5
+        const val PLAY_PAUSE = 6
+        const val RESTART = 7
     }
 }
