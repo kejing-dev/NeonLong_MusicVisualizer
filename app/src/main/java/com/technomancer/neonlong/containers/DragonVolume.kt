@@ -162,7 +162,7 @@ fun DragonVolume() {
             } else {
                 // The SDK loads models on the main thread only.
                 val library = MeshLibrary.load(context)
-                reg.dragonEntities.build(reg.sceneConfig, library, reg.entities).forEach { content.addEntity(it) }
+                reg.dragonEntities.build(reg.sceneConfig, library, reg.entities, reg.pose.fibers).forEach { content.addEntity(it) }
             }
         },
     )

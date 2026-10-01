@@ -14,7 +14,7 @@ enum class PartFamily(val capacity: Int) {
     SPIRE(81),
     BEACON(81),
     CAP(81),
-    HEAD(1),
+    HEAD(HeadZones.COUNT),
     JAW(1),
     EYE(2),
     EYE_BEZEL(2),
@@ -32,4 +32,6 @@ enum class PartFamily(val capacity: Int) {
     PEARL_CORE(1),
     PEARL_SHELL(1),
     PEARL_RING(3),
+    /** Breath particles drawn this frame (the newest of the pool). */
+    BREATH(160),
 }

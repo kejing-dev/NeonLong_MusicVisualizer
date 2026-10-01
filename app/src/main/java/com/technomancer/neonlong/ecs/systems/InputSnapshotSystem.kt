@@ -46,6 +46,9 @@ class InputSnapshotSystem : System() {
         input.beatStrength = if (snap.beatCount != lastBeatCount) snap.lastBeatStrength else 0f
         lastBeatCount = snap.beatCount
         input.reducedMotion = reg.reducedMotion
+        val width = reg.volumeWidthMeters
+        input.showSmallParts = reg.lod.showSmallParts(width)
+        input.whiskerStride = reg.lod.whiskerStride(width)
     }
 
     private fun readHands(dt: Float) {

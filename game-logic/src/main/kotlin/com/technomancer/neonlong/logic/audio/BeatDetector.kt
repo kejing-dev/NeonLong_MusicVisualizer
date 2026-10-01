@@ -19,7 +19,7 @@ class BeatDetector(private val c: AudioConfig = AudioConfig()) {
     var beat = 0f
         private set
 
-    /** [raw] is the mean of the unsmoothed band targets 0–9. Returns the beat strength or 0. */
+    /** [raw] is the mean of the unsmoothed low-band targets. Returns the beat strength or 0. */
     fun update(raw: Float, dt: Float): Float {
         sinceLast += dt
         pulse *= exp(-c.beatPulseDecay * dt)

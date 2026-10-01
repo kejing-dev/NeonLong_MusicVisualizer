@@ -19,13 +19,17 @@ data class DragonConfig(
     val rollAmp: Float = 0.22f,
     /** Longest simulation step; bigger frame gaps are clamped to this. */
     val maxStepS: Float = 0.05f,
-    /** Every part must stay inside this model-space box. */
+    /**
+     * Every part must stay inside this model-space box. Widened from the original 18 × 7.5 × 13
+     * half-extents so the tail, legs and tower tops fit at full input; the dragon's size and the
+     * volume's scale (width / [SceneConfig.modelUnitsAcross]) are unchanged.
+     */
     val boundsCenterX: Float = 0f,
     val boundsCenterY: Float = 2.5f,
     val boundsCenterZ: Float = 0f,
-    val boundsHalfX: Float = 18f,
-    val boundsHalfY: Float = 7.5f,
-    val boundsHalfZ: Float = 13f,
+    val boundsHalfX: Float = 25f,
+    val boundsHalfY: Float = 12f,
+    val boundsHalfZ: Float = 21f,
     /** Light waves along the body: speed in spine units per second, Gaussian width d², lifetime. */
     val waveSpeed: Float = 1.35f,
     val waveWidth: Float = 0.0035f,
@@ -41,6 +45,8 @@ data class DragonConfig(
     val callOffset: Float = 0.3f,
     val pearlParkS: Float = 5.0f,
     val callBlendRate: Float = 2.0f,
+    /** Where the loop is pulled toward on a Call, along +Z (model units). */
+    val callFrontZ: Float = 11.5f,
 ) {
     companion object {
         const val SEGMENTS = 27

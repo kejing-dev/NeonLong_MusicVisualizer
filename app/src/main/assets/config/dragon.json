@@ -9,9 +9,9 @@
   "boundsCenterX": 0.0,
   "boundsCenterY": 2.5,
   "boundsCenterZ": 0.0,
-  "boundsHalfX": 18.0,
-  "boundsHalfY": 7.5,
-  "boundsHalfZ": 13.0,
+  "boundsHalfX": 25.0,
+  "boundsHalfY": 12.0,
+  "boundsHalfZ": 21.0,
   "waveSpeed": 1.35,
   "waveWidth": 0.0035,
   "waveLifeS": 1.6,
@@ -23,5 +23,6 @@
   "rippleCooldownS": 0.25,
   "callOffset": 0.3,
   "pearlParkS": 5.0,
-  "callBlendRate": 2.0
+  "callBlendRate": 2.0,
+  "callFrontZ": 11.5
 }

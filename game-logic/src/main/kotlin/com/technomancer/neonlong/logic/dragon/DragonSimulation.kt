@@ -20,9 +20,11 @@ import kotlin.math.sin
  * Advances the dragon one frame and writes every part's pose and glow into a [PoseBuffer].
  * Pure logic: no allocation per tick, no platform calls.
  *
- * Current scope: flight along the loop; the body (dorsal blocks, tiers, belly plates, side
- * plates, square frames, belly lights, 81 towers with spires, caps and beacons, energy core);
- * light waves, touch ripples, Call / Send / Flash; palettes; the flash limiter.
+ * Covers the whole dragon: flight along the loop; the body (dorsal blocks, tiers, belly
+ * plates, side plates, square frames, belly lights, 81 towers with spires, caps and beacons,
+ * energy core, pistons, cables); the head (jaw, eyes, 龍 plate, antlers, whiskers, mane);
+ * legs with flame tufts; the tail fan; the pearl; breath; light waves, touch ripples,
+ * Call / Send / Flash; palettes; the flash limiter.
  */
 class DragonSimulation(
     private val config: DragonConfig = DragonConfig(),
@@ -35,6 +37,17 @@ class DragonSimulation(
     val palette = Palette(paletteConfig)
     val flash = FlashLimiter(flashConfig)
     val towers = Towers()
+    val bounds = Bounds(config)
+    val head = HeadRig()
+    val breath = Breath(bounds)
+    val pearl = Pearl()
+    private val whiskers = Whiskers()
+    private val mane = Mane()
+    private val legs = Legs()
+    private val tailFan = TailFan()
+    private val pistons = Pistons()
+    private val place = Place()
+    private var parkBlend = 0f
 
     /** Head position on the flight path, in path radians. */
     var sHead = 0f
@@ -56,8 +69,8 @@ class DragonSimulation(
     var pearlParkRemaining = 0f
         private set
 
-    /** Front edge the loop is pulled toward: 1.5 units inside the bounds box. */
-    val frontZ: Float = config.boundsCenterZ + config.boundsHalfZ - 1.5f
+    /** Where the loop is pulled toward on a Call. */
+    val frontZ: Float = config.callFrontZ
 
     private val segs = DragonConfig.SEGMENTS
     private val frames = Array(segs) { Basis() }
@@ -83,8 +96,10 @@ class DragonSimulation(
         pull = 0f
         pearlParkRemaining = 0f
         pendingFlash = false
+        parkBlend = 0f
         waves.clear()
         flash.reset()
+        breath.clear()
     }
 
     /** Draw the loop toward the user and park the pearl near the hand. */
@@ -148,6 +163,32 @@ class DragonSimulation(
         writeBellyLights(input, out)
         writeTowers(input, out)
         writeCore(input, out)
+        writeExtremities(step, input, out)
+    }
+
+    /** Head, whiskers, mane, legs, tail fan, pearl, breath, pistons and cables. */
+    private fun writeExtremities(step: Float, input: InputSnapshot, out: PoseBuffer) {
+        val pulse = input.beatPulse * flash.localPulseScale
+        val gain = flashMul
+        head.place(spine)
+        head.updateJaw(input.bass, input.beatPulse)
+        head.write(out, palette, input.bass, input.mid, input.high, pulse, gain)
+        whiskers.write(out, head, palette, time, input.mid, input.whiskerStride, gain)
+        mane.write(out, head, palette, input.bands, input.vol, pulse, gain)
+        legs.write(out, place, spine, palette, waves, time, input.bass, input.high, pulse, input.showSmallParts, gain)
+        legs.writeTufts(out.fibers, spine, palette, time, input.high, gain)
+        tailFan.write(out.fibers, spine, palette, input.bands, time, input.high, gain)
+
+        val parked = pearlParkRemaining > 0f
+        parkBlend += ((if (parked) 1f else 0f) - parkBlend) * (1f - exp(-3f * step))
+        pearl.place(sHead, pull, frontZ, parked, parkBlend)
+        pearl.write(out, out.fibers, palette, step, time, input.bass, input.mid, input.high, input.vol, input.beatPulse, input.reducedMotion, gain)
+
+        breath.update(step, head, input.bass, input.beatStrength)
+        breath.write(out, palette, gain)
+
+        pistons.write(out, place, frames, radius, depth, input.showSmallParts)
+        pistons.writeCables(out.fibers, spine, palette, input.bass, pulse, input.showSmallParts, gain)
     }
 
     /** Mean of segment [i]'s three bands. */

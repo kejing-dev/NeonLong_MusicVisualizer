@@ -12,6 +12,7 @@
   "beatFloor": 0.22,
   "beatMinInterval": 0.27,
   "beatStrengthBoost": 0.25,
+  "beatBandsHi": 6,
   "beatPulseDecay": 6.0,
   "idleBpm": 96.0,
   "sensitivity": 1.0

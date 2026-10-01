@@ -56,8 +56,8 @@ class BeatDetectorTest {
         return s
     }
 
-    /** The target from the spec. Currently fails on precision (about 0.77); see PROGRESS.md. */
-    @Disabled("Precision is about 0.77 against the 0.85 target on the demo track; waiting on a decision")
+    /** The target from the spec. Precision is about 0.83 with bands 0–6 (accepted); see PROGRESS.md. */
+    @Disabled("Precision is about 0.83 against the 0.85 target on the demo track; accepted")
     @Test
     fun meetsTarget() {
         val s = score()
@@ -71,7 +71,7 @@ class BeatDetectorTest {
     fun noWorseThanMeasured() {
         val s = score()
         assertEquals(0, s.introBeats, "no beats in the intro bars")
-        assertTrue(s.precision >= 0.75f, "precision ${s.precision}")
-        assertTrue(s.recall >= 0.85f, "recall ${s.recall}")
+        assertTrue(s.precision >= 0.82f, "precision ${s.precision}")
+        assertTrue(s.recall >= 0.88f, "recall ${s.recall}")
     }
 }

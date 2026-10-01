@@ -22,6 +22,10 @@ class InputSnapshot {
     /** Playback position of the demo or file source, in seconds. */
     var playbackPositionS = 0.0
     var reducedMotion = false
+    /** Small parts (pistons, cables, joint rings) are drawn; false in small volumes. */
+    var showSmallParts = true
+    /** 1 = every whisker dot, 2 = every other one (small volumes). */
+    var whiskerStride = 1
 
     fun clearAudio() {
         bands.fill(0f)

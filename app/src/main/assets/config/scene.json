@@ -1,13 +1,13 @@
 {
   "spawnDistance": 1.5,
   "spawnHeightOffset": -0.15,
-  "defaultWidth": 1.2,
-  "defaultHeight": 0.47,
-  "defaultDepth": 0.87,
-  "minWidth": 0.5,
-  "maxWidth": 3.0,
-  "modelUnitsAcross": 36.0,
+  "defaultWidth": 1.6667,
+  "defaultHeight": 0.8,
+  "defaultDepth": 1.4,
+  "minWidth": 0.6944,
+  "maxWidth": 4.1667,
+  "modelUnitsAcross": 50.0,
   "turntableRadiusFrac": 0.45,
   "turntableGain": 1.0,
-  "lodSmallWidth": 0.7
+  "lodSmallWidth": 0.9722
 }

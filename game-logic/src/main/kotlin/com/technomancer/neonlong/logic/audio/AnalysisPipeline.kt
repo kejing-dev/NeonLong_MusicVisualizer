@@ -34,7 +34,7 @@ class AnalysisPipeline(sampleRate: Int, private val c: AudioConfig = AudioConfig
     private fun finishAudioHop(dt: Float, positionS: Double, out: SpectrumSnapshot) {
         mapper.map(analyzer.normalized, raw)
         features.update(raw, dt)
-        val beat = beats.update(features.targetMean(0, 9), dt)
+        val beat = beats.update(features.targetMean(0, c.beatBandsHi), dt)
         if (beat > 0f) { beatCount++; lastBeat = beat }
         write(out, beat, hasAudio = true, positionS = positionS)
     }

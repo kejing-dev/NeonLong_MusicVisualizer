@@ -3,12 +3,10 @@ package com.technomancer.neonlong.render
 import com.pico.spatial.core.ecs.Entity
 import com.pico.spatial.core.ecs.ModelComponent
 import com.pico.spatial.core.ecs.TransformComponent
-import com.pico.spatial.core.ecs.resource.BlendingMode
 import com.pico.spatial.core.ecs.resource.MeshResource
 import com.pico.spatial.core.ecs.resource.PhysicallyBasedMaterial
 import com.pico.spatial.core.ecs.resource.TextureResource
 import com.pico.spatial.core.ecs.resource.UnlitMaterial
-import com.pico.spatial.core.math.Color4
 import com.pico.spatial.core.math.Vector3
 import com.technomancer.neonlong.app.SdkMath
 import com.technomancer.neonlong.logic.dragon.PartFamily
@@ -25,9 +23,15 @@ class FamilyRenderer(
     private val mesh: MeshResource,
     val look: Look,
     private val emissiveTexture: TextureResource? = null,
+    /** A different model per instance, if given (e.g. the head's color zones). */
+    private val meshes: List<MeshResource>? = null,
 ) {
-    /** Lit metal with a glowing emissive map, or pure unlit neon. */
-    enum class Look { METAL, TOWER, NEON }
+    /**
+     * METAL / TOWER / ARMOUR: lit metal with a glowing emissive map. CHROME: plain polished
+     * metal. GLASS: dark see-through metal. NEON: unlit color. ADDITIVE: unlit, adds light
+     * (glows). GLYPH: unlit textured plate that adds light.
+     */
+    enum class Look { METAL, TOWER, ARMOUR, CHROME, GLASS, NEON, ADDITIVE, GLYPH }
 
     val count = family.capacity
     val entities = arrayOfNulls<Entity>(count)
@@ -39,22 +43,12 @@ class FamilyRenderer(
     /** Creates the entities under [parent]; [extra] adds components (e.g. touch) per instance. */
     fun build(parent: Entity, extra: ((index: Int, entity: Entity) -> Unit)? = null) {
         for (n in 0 until count) {
-            val material = when (look) {
-                Look.NEON -> UnlitMaterial.create(BlendingMode.OPAQUE).also { unlit[n] = it }
-                Look.METAL, Look.TOWER -> PhysicallyBasedMaterial.create(BlendingMode.OPAQUE).apply {
-                    if (look == Look.METAL) {
-                        setBaseColor(Color4(0.063f, 0.055f, 0.094f, 1f)) // #100e18
-                        setMetallic(0.75f); setRoughness(0.33f)
-                    } else {
-                        setBaseColor(Color4(0.055f, 0.051f, 0.086f, 1f)) // #0e0d16
-                        setMetallic(0.7f); setRoughness(0.35f)
-                    }
-                    if (emissiveTexture != null) setEmissiveTexture(emissiveTexture)
-                }.also { pbr[n] = it }
-            }
+            val material = Looks.material(look, emissiveTexture)
+            pbr[n] = material as? PhysicallyBasedMaterial
+            unlit[n] = material as? UnlitMaterial
             val e = Entity().apply {
                 setName("${family.name}_$n")
-                components.set(ModelComponent(mesh, material))
+                components.set(ModelComponent(meshes?.get(n) ?: mesh, material))
                 components.set(TransformComponent())
             }
             extra?.invoke(n, e)
@@ -88,8 +82,7 @@ class FamilyRenderer(
             if (abs(r - lastRgb[l]) + abs(g - lastRgb[l + 1]) + abs(b - lastRgb[l + 2]) > COLOR_EPSILON) {
                 lastRgb[l] = r; lastRgb[l + 1] = g; lastRgb[l + 2] = b
                 val k = Glow.capScale(r, g, b)
-                pbr[n]?.setEmissiveColor(Color4(r * k, g * k, b * k, 1f))
-                unlit[n]?.setBaseColor(Color4(r * k, g * k, b * k, 1f))
+                Looks.setGlow(look, pbr[n], unlit[n], r * k, g * k, b * k)
             }
         }
     }

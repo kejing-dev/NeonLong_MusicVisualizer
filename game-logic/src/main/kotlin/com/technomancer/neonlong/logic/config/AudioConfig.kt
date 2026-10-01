@@ -21,6 +21,11 @@ data class AudioConfig(
     val beatFloor: Float = 0.22f,
     val beatMinInterval: Float = 0.27f,
     val beatStrengthBoost: Float = 0.25f,
+    /**
+     * Highest band the beat detector listens to (from band 0). 6 (32–55 Hz) rather than 9:
+     * on the demo track bass notes just above the kick range caused early, false beats.
+     */
+    val beatBandsHi: Int = 6,
     val beatPulseDecay: Float = 6f,
     /** Idle breathing when nothing plays. */
     val idleBpm: Float = 96f,

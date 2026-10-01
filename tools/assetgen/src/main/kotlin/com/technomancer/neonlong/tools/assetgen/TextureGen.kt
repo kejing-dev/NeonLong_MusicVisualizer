@@ -67,9 +67,9 @@ object TextureGen {
     }
 
     /**
-     * Temporary night environment for reflections until the Spatial Editor one exists:
-     * an equirectangular sky (2:1) from #07060d at the zenith to #1a0f33 at the horizon,
-     * dark below, with one soft magenta glow toward +X.
+     * Night environment for the dragon's metal (image-based light): an equirectangular sky (2:1),
+     * dark blue-violet from #07060d at the zenith to #1a0f33 at the horizon, dark below, with
+     * one soft magenta key toward +X at 20% intensity.
      */
     fun nightEnvironment(width: Int = 1024): BufferedImage {
         val h = width / 2
@@ -204,6 +204,63 @@ object TextureGen {
             img.setRGB(x, y, (ai shl 24) or 0xffffff)
         }
         return img
+    }
+
+    /**
+     * The 龍 glyph (128²): transparent, a 4 px white border inset 4 px, and the character in
+     * Noto Serif SC Black at 96 px with a soft 10 px glow. Uses [fontFile] if it exists,
+     * otherwise the system serif font (and says so in [note]).
+     */
+    fun glyph(fontFile: File, note: (String) -> Unit): BufferedImage {
+        val n = 128
+        val font = if (fontFile.isFile) {
+            java.awt.Font.createFont(java.awt.Font.TRUETYPE_FONT, fontFile).deriveFont(96f)
+        } else {
+            note("Noto Serif SC Black not found at ${fontFile.path}; GEN_Glyph_Long uses the system serif font")
+            java.awt.Font(java.awt.Font.SERIF, java.awt.Font.BOLD, 96)
+        }
+        // The character alone, to blur into a glow.
+        val text = BufferedImage(n, n, BufferedImage.TYPE_INT_ARGB)
+        text.createGraphics().apply {
+            setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON)
+            this.font = font
+            color = Color.WHITE
+            val fm = fontMetrics
+            val w = fm.stringWidth("龍")
+            drawString("龍", (n - w) / 2, (n - fm.height) / 2 + fm.ascent)
+            dispose()
+        }
+        val glow = boxBlurAlpha(text, 10)
+        val out = BufferedImage(n, n, BufferedImage.TYPE_INT_ARGB)
+        for (y in 0 until n) for (x in 0 until n) {
+            val border = x in 4 until n - 4 && y in 4 until n - 4 &&
+                (x < 8 || x >= n - 8 || y < 8 || y >= n - 8)
+            val a = max(max((text.getRGB(x, y) ushr 24), (glow[y * n + x] * 0.8).roundToInt()), if (border) 255 else 0)
+            out.setRGB(x, y, (a shl 24) or 0xffffff)
+        }
+        return out
+    }
+
+    /** Alpha of [img] blurred with a box of half-width [r], two passes. */
+    private fun boxBlurAlpha(img: BufferedImage, r: Int): DoubleArray {
+        val w = img.width; val h = img.height
+        var a = DoubleArray(w * h) { ((img.getRGB(it % w, it / w) ushr 24) and 0xff).toDouble() }
+        repeat(2) {
+            val tmp = DoubleArray(w * h)
+            for (y in 0 until h) for (x in 0 until w) {
+                var s = 0.0; var c = 0
+                for (k in -r..r) { val xx = x + k; if (xx in 0 until w) { s += a[y * w + xx]; c++ } }
+                tmp[y * w + x] = s / c
+            }
+            val out = DoubleArray(w * h)
+            for (y in 0 until h) for (x in 0 until w) {
+                var s = 0.0; var c = 0
+                for (k in -r..r) { val yy = y + k; if (yy in 0 until h) { s += tmp[yy * w + x]; c++ } }
+                out[y * w + x] = s / c
+            }
+            a = out
+        }
+        return a
     }
 
     fun writePng(img: BufferedImage, file: File) {

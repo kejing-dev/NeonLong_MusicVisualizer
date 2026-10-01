@@ -16,9 +16,11 @@ import com.technomancer.neonlong.ecs.components.SegmentTouchComponent
 import com.technomancer.neonlong.logic.config.DragonConfig
 import com.technomancer.neonlong.logic.config.SceneConfig
 import com.technomancer.neonlong.logic.dragon.BodyLayout
-import com.technomancer.neonlong.logic.dragon.ChunkChain
+import com.technomancer.neonlong.logic.dragon.Fibers
+import com.technomancer.neonlong.render.FamilyRenderer.Look
 import com.technomancer.neonlong.logic.dragon.PartFamily
 import com.technomancer.neonlong.logic.dragon.PoseBuffer
+import kotlinx.coroutines.yield
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -36,9 +38,8 @@ class DragonEntities {
         private set
     private var lightRig: Entity? = null
 
-    private var families: List<FamilyRenderer> = emptyList()
-    private var core: ChainRenderer? = null
-    val coreChain = ChunkChain(CORE_CHUNKS)
+    private var parts: List<PartRenderer> = emptyList()
+    private var tubes: List<PartRenderer> = emptyList()
 
     /** Width and yaw the root was last placed for. */
     var appliedWidth = -1f
@@ -46,58 +47,84 @@ class DragonEntities {
 
     val built: Boolean get() = root != null
 
-    /** Materials in use (one per drawn instance). */
+    /** Draw calls and materials in use (one per entity with a mesh). */
     var materialCount = 0
         private set
 
     /** Builds DragonRoot with every body family, the turntable and the badge. */
-    fun build(scene: SceneConfig, lib: MeshLibrary, registry: EntityRegistry): List<Entity> {
+    suspend fun build(scene: SceneConfig, lib: MeshLibrary, registry: EntityRegistry, fibers: Fibers): List<Entity> {
         val rootEntity = Entity().apply {
             setName(ROOT)
             components.set(TransformComponent())
         }
-        val dorsal = FamilyRenderer(PartFamily.SEG_DORSAL, lib.block, FamilyRenderer.Look.METAL, lib.facade)
-        families = listOf(
+        // Dorsal blocks keep one entity each: they're what the user touches and hovers.
+        val dorsal = SingleFamily(FamilyRenderer(PartFamily.SEG_DORSAL, lib.block, Look.METAL, lib.facade)) { n, e ->
+            e.components.set(touchable(Vector3(1f, 1f, 1f)))
+            e.components.set(InteractableComponent())
+            e.components.set(HoverEffectComponent())
+            e.components.set(SegmentTouchComponent(n))
+        }
+        // Repeated parts are instanced in groups (one draw call each). Every piece is still drawn
+        // with its own position, size and rotation; a group shares one glow color, about one
+        // color step per body segment, per tail ribbon and per flame.
+        parts = listOf(
             dorsal,
-            FamilyRenderer(PartFamily.SEG_TIER, lib.block, FamilyRenderer.Look.METAL, lib.facade),
-            FamilyRenderer(PartFamily.SEG_BELLY, lib.block, FamilyRenderer.Look.METAL, lib.facade),
-            FamilyRenderer(PartFamily.SIDE_PLATE, lib.block, FamilyRenderer.Look.METAL, lib.facade),
-            FamilyRenderer(PartFamily.FRAME_RING, lib.squareRing, FamilyRenderer.Look.NEON),
-            FamilyRenderer(PartFamily.BELLY_LIGHT, lib.block, FamilyRenderer.Look.NEON),
-            FamilyRenderer(PartFamily.TOWER_BODY, lib.tower, FamilyRenderer.Look.TOWER, lib.facade),
-            FamilyRenderer(PartFamily.SPIRE, lib.cylBase, FamilyRenderer.Look.NEON),
-            FamilyRenderer(PartFamily.CAP, lib.block, FamilyRenderer.Look.NEON),
-            FamilyRenderer(PartFamily.BEACON, lib.ball, FamilyRenderer.Look.NEON),
+            InstancedFamily(PartFamily.SEG_TIER, lib.block, Look.METAL, lib.facade, groups = 27),
+            InstancedFamily(PartFamily.SEG_BELLY, lib.block, Look.METAL, lib.facade, groups = 27),
+            InstancedFamily(PartFamily.SIDE_PLATE, lib.block, Look.METAL, lib.facade, groups = 54),
+            InstancedFamily(PartFamily.FRAME_RING, lib.squareRing, Look.NEON, null, groups = 27),
+            InstancedFamily(PartFamily.BELLY_LIGHT, lib.block, Look.NEON, null, groups = 36),
+            InstancedFamily(PartFamily.TOWER_BODY, lib.tower, Look.TOWER, lib.facade, groups = 81),
+            InstancedFamily(PartFamily.SPIRE, lib.cylBase, Look.NEON, null, groups = 27),
+            InstancedFamily(PartFamily.CAP, lib.block, Look.NEON, null, groups = 27),
+            InstancedFamily(PartFamily.BEACON, lib.ball, Look.NEON, null, groups = 81),
+            InstancedFamily(PartFamily.PISTON_SLEEVE, lib.cylBase, Look.CHROME, null, groups = 2),
+            InstancedFamily(PartFamily.PISTON_ROD, lib.cylBase, Look.CHROME, null, groups = 2),
+            SingleFamily(FamilyRenderer(PartFamily.HEAD, lib.headZones[0], Look.METAL, lib.facade, meshes = lib.headZones)),
+            SingleFamily(FamilyRenderer(PartFamily.JAW, lib.jaw, Look.METAL, lib.facade)),
+            SingleFamily(FamilyRenderer(PartFamily.EYE, lib.block, Look.NEON)),
+            SingleFamily(FamilyRenderer(PartFamily.EYE_BEZEL, lib.block, Look.NEON)),
+            SingleFamily(FamilyRenderer(PartFamily.GLYPH, lib.glyphPlate, Look.GLYPH, lib.glyph)),
+            SingleFamily(FamilyRenderer(PartFamily.ANTLERS, lib.antlers, Look.NEON)),
+            SingleFamily(FamilyRenderer(PartFamily.MOUTH_GLOW, lib.ball, Look.ADDITIVE)),
+            InstancedFamily(PartFamily.WHISKER_DOT, lib.block, Look.NEON, null, groups = 30),
+            InstancedFamily(PartFamily.MANE_BLADE, lib.blade, Look.NEON, null, groups = 24),
+            InstancedFamily(PartFamily.LIMB, lib.limb, Look.ARMOUR, lib.armour, groups = 8),
+            InstancedFamily(PartFamily.JOINT_RING, lib.torus, Look.NEON, null, groups = 2),
+            InstancedFamily(PartFamily.JOINT_BALL, lib.ball, Look.CHROME, null, groups = 1),
+            InstancedFamily(PartFamily.PALM, lib.block, Look.ARMOUR, lib.armour, groups = 1),
+            InstancedFamily(PartFamily.TOE, lib.limb, Look.ARMOUR, lib.armour, groups = 4),
+            InstancedFamily(PartFamily.TALON, lib.talon, Look.NEON, null, groups = 4),
+            SingleFamily(FamilyRenderer(PartFamily.PEARL_CORE, lib.pearlCore, Look.NEON)),
+            SingleFamily(FamilyRenderer(PartFamily.PEARL_SHELL, lib.pearlShell, Look.GLASS)),
+            SingleFamily(FamilyRenderer(PartFamily.PEARL_RING, lib.pearlRing, Look.NEON)),
+            InstancedFamily(PartFamily.BREATH, lib.block, Look.ADDITIVE, null, groups = 32),
         )
-        for (f in families) {
-            if (f === dorsal) {
-                // Dorsal blocks are what the user touches to send ripples.
-                f.build(rootEntity) { n, e ->
-                    e.components.set(touchable(Vector3(1f, 1f, 1f)))
-                    e.components.set(InteractableComponent())
-                    e.components.set(HoverEffectComponent())
-                    e.components.set(SegmentTouchComponent(n))
-                }
-            } else {
-                f.build(rootEntity)
-            }
+        val f = fibers
+        tubes = listOf(
+            InstancedChains("CORE", arrayOf(f.core), CORE_CHUNKS, lib.cylBase, false, groups = 54, startFrac = CORE_START_U, endFrac = CORE_END_U),
+            InstancedChains("TUFT", f.tufts, 4, lib.cylBase, true, groups = 20),
+            InstancedChains("TAIL", f.tail, 6, lib.cylBase, true, groups = 36),
+            InstancedChains("PEARL_FLAME", f.pearlFlames, 4, lib.cylBase, true, groups = 14),
+            InstancedChains("CABLE", f.cables, 12, lib.cylBase, false, groups = 4),
+        )
+        for (p in parts + tubes) {
+            p.build(rootEntity)
+            yield() // keep the main thread responsive while building
         }
-        core = ChainRenderer("CORE", coreChain, lib.cylBase).also { it.build(rootEntity) }
 
-        // Metal parts reflect the temporary night environment.
+        // Metal parts reflect the night environment.
         val lights = Lighting.create(lib.nightEnvironment)
-        for (f in families) {
-            if (f.look == FamilyRenderer.Look.NEON) continue
-            for (e in f.entities) e?.components?.set(Lighting.receiver(lights))
-        }
+        for (p in parts) for (e in p.metalEntities) e.components.set(Lighting.receiver(lights))
         lightRig = lights
-        materialCount = families.sumOf { it.materialCount } + CORE_CHUNKS
+        materialCount = (parts + tubes).sumOf { it.drawCount }
         registry.put(ROOT, rootEntity)
         root = rootEntity
         appliedWidth = -1f
         appliedYaw = Float.NaN
 
-        val baseY = -scene.defaultHeight * 0.5f + 0.01f
+        // Ring height: just high enough that the badge centered on it stays inside the volume.
+        val baseY = -scene.defaultHeight * 0.5f + Badge.SIZE * 0.5f + 0.002f
         val rx = scene.turntableRadiusFrac * scene.defaultWidth
         val rz = scene.turntableRadiusFrac * scene.defaultDepth
         val ring = Turntable.create(radiusX = rx, radiusZ = rz, tube = 0.008f, baseY = baseY).apply {
@@ -109,33 +136,32 @@ class DragonEntities {
         registry.put(Turntable.NAME, ring)
         turntable = ring
 
-        val badgeEntity = Badge.create(frontZ = scene.defaultDepth * 0.5f - 0.04f, baseY = baseY + 0.03f).apply {
-            components.set(touchable(Vector3(Badge.SIZE, Badge.SIZE, Badge.THICKNESS)))
+        // Centered on the front of the ring, like a buckle the ring runs through.
+        val badgeEntity = Badge.create(frontZ = rz, baseY = baseY, glyphPlate = lib.glyphPlate, glyph = lib.glyph).apply {
+            // Deeper than the tile so it reaches past the ring's grab area and gets the tap first.
+            components.set(touchable(Vector3(Badge.SIZE, Badge.SIZE, Badge.TOUCH_DEPTH)))
             components.set(InteractableComponent())
             components.set(HoverEffectComponent())
         }
         registry.put(Badge.NAME, badgeEntity)
         badge = badgeEntity
 
-        val parts = families.sumOf { it.count } + CORE_CHUNKS
-        Log.i(LOG_TAG, "[boot] dragon built: $parts body entities, $materialCount materials, turntable, badge")
+        Log.i(LOG_TAG, "[boot] dragon built: $materialCount draw calls and materials (instanced), turntable, badge")
         return listOf(rootEntity, lights, ring, badgeEntity)
     }
 
     /** Copies the simulation's output onto the rigid body parts. */
     fun applyParts(pose: PoseBuffer) {
-        for (f in families) f.apply(pose)
+        for (p in parts) p.apply(pose)
     }
 
     /**
-     * Copies the energy core onto its chain of pieces. Only the stretch between the first and
-     * last body segments is drawn, so the core doesn't stick out bare past the body.
+     * Copies every tube (core, tufts, tail fan, pearl flames, cables) onto its chain of
+     * pieces. The core is only drawn between the first and last body segments, so it
+     * doesn't stick out bare past the body.
      */
-    fun applyCore(pose: PoseBuffer) {
-        val fiber = pose.fibers.core
-        val steps = fiber.points - 1
-        coreChain.update(fiber, (CORE_START_U * steps).toInt(), (CORE_END_U * steps).toInt())
-        core?.apply()
+    fun applyFibers(pose: PoseBuffer) {
+        for (t in tubes) t.apply(pose)
     }
 
     /**
@@ -178,8 +204,8 @@ class DragonEntities {
         root = null
         turntable = null
         badge = null
-        families = emptyList()
-        core = null
+        parts = emptyList()
+        tubes = emptyList()
         Log.i(LOG_TAG, "[boot] dragon entities destroyed")
     }
 

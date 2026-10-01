@@ -41,8 +41,10 @@ val generate by tasks.registering(JavaExec::class) {
     classpath = sourceSets.main.get().runtimeClasspath
     mainClass.set(application.mainClass)
     jvmArgs("-Djava.awt.headless=true")
-    args(assetsDir.asFile.absolutePath, reportFile.absolutePath)
+    val fontFile = layout.projectDirectory.file("fonts/NotoSerifSC-Black.ttf").asFile
+    args(assetsDir.asFile.absolutePath, reportFile.absolutePath, fontFile.absolutePath)
     inputs.files(sourceSets.main.get().runtimeClasspath)
+    inputs.dir(layout.projectDirectory.dir("fonts"))
     outputs.dir(assetsDir.dir("models"))
     outputs.dir(assetsDir.dir("textures"))
     outputs.file(reportFile)
