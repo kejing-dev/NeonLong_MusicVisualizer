@@ -101,8 +101,10 @@ fun DragonVolume() {
         val stateObserver = object : SpatialContainerStateObserver {
             override fun onStateChanged(source: SpatialContainerStateOwner, event: SpatialContainerStateEvent) {
                 when (event) {
-                    SpatialContainerStateEvent.ON_STAGED -> reg.session.onContainerShown()
-                    SpatialContainerStateEvent.ON_UNSTAGED -> reg.session.onContainerHidden()
+                    // Only a window that's completely out of view counts as hidden. "Unstaged" also
+                    // fires when the control panel partly covers the dragon, which must keep playing.
+                    SpatialContainerStateEvent.ON_SIGHTED -> reg.session.onContainerShown()
+                    SpatialContainerStateEvent.ON_UNSIGHTED -> reg.session.onContainerHidden()
                     SpatialContainerStateEvent.ON_FOCUSED -> reg.session.onContainerFocused()
                     SpatialContainerStateEvent.ON_UNFOCUSED -> reg.session.onContainerUnfocused()
                     else -> Unit
