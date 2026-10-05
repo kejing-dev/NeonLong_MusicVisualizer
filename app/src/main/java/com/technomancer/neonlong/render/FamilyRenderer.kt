@@ -29,9 +29,10 @@ class FamilyRenderer(
     /**
      * METAL / TOWER / ARMOUR: lit metal with a glowing emissive map. CHROME: plain polished
      * metal. GLASS: dark see-through metal. NEON: unlit color. ADDITIVE: unlit, adds light
-     * (glows). GLYPH: unlit textured plate that adds light.
+     * (glows). GLYPH: unlit textured plate that adds light. HALO: a soft textured glow that
+     * adds light.
      */
-    enum class Look { METAL, TOWER, ARMOUR, CHROME, GLASS, NEON, ADDITIVE, GLYPH }
+    enum class Look { METAL, TOWER, ARMOUR, CHROME, GLASS, NEON, ADDITIVE, GLYPH, HALO }
 
     val count = family.capacity
     val entities = arrayOfNulls<Entity>(count)

@@ -11,9 +11,15 @@ import com.technomancer.neonlong.render.FamilyRenderer.Look
 /** Materials for each look, shared by the per-entity and instanced renderers. */
 object Looks {
     fun material(look: Look, texture: TextureResource?): Material = when (look) {
-        Look.NEON -> UnlitMaterial.create(BlendingMode.OPAQUE)
-        Look.ADDITIVE -> UnlitMaterial.create(BlendingMode.ADD)
-        Look.GLYPH -> UnlitMaterial.create(BlendingMode.ADD).apply {
+        // Neon is shown at its full color: no tone mapping, which would gray it out.
+        Look.NEON -> UnlitMaterial.create(BlendingMode.OPAQUE).apply { setApplyToneMapping(false) }
+        Look.ADDITIVE -> UnlitMaterial.create(BlendingMode.ADD).apply {
+            setApplyToneMapping(false)
+            setDepthWrite(false)
+        }
+        Look.GLYPH, Look.HALO -> UnlitMaterial.create(BlendingMode.ADD).apply {
+            setApplyToneMapping(false)
+            setDepthWrite(false)
             if (texture != null) setBaseColorTexture(texture)
         }
         Look.GLASS -> PhysicallyBasedMaterial.create(BlendingMode.TRANSPARENT).apply {

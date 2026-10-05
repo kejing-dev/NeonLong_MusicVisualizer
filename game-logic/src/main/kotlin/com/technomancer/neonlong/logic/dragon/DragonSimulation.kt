@@ -181,7 +181,7 @@ class DragonSimulation(
 
         val parked = pearlParkRemaining > 0f
         parkBlend += ((if (parked) 1f else 0f) - parkBlend) * (1f - exp(-3f * step))
-        pearl.place(sHead, pull, frontZ, parked, parkBlend)
+        pearl.place(sHead, pull, frontZ, parked, parkBlend, head.frame.p, time, step)
         pearl.write(out, out.fibers, palette, step, time, input.bass, input.mid, input.high, input.vol, input.beatPulse, input.reducedMotion, gain)
 
         breath.update(step, head, input.bass, input.beatStrength)

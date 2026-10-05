@@ -88,6 +88,10 @@ class InstancedChains(
     private val groups: Int,
     private val startFrac: Float = 0f,
     private val endFrac: Float = 1f,
+    /** Draws the tubes this many times thicker (a glow sleeve around the real tube). */
+    private val radiusMul: Float = 1f,
+    /** Multiplies the tubes' color (a sleeve glows more faintly than its tube). */
+    private val gain: Float = 1f,
 ) : PartRenderer {
     private val chains = Array(fibers.size) { ChunkChain(chunks) }
     private val look = if (additive) FamilyRenderer.Look.ADDITIVE else FamilyRenderer.Look.NEON
@@ -121,11 +125,62 @@ class InstancedChains(
             val c = chain.rgb
             for (k in 0 until chunks) {
                 val o = k * 10
+                // Pieces run along their Y axis; X and Z are the tube's radius.
                 inst.set(
-                    f * chunks + k, t[o], t[o + 1], t[o + 2], t[o + 3], t[o + 4], t[o + 5], t[o + 6], t[o + 7], t[o + 8], t[o + 9],
-                    c[k * 3], c[k * 3 + 1], c[k * 3 + 2], fiber.visible,
+                    f * chunks + k, t[o], t[o + 1], t[o + 2], t[o + 3], t[o + 4], t[o + 5], t[o + 6],
+                    t[o + 7] * radiusMul, t[o + 8], t[o + 9] * radiusMul,
+                    c[k * 3] * gain, c[k * 3 + 1] * gain, c[k * 3 + 2] * gain, fiber.visible,
                 )
             }
+        }
+        inst.end()
+    }
+}
+
+/**
+ * Soft additive halos, one per piece of [source]: three crossed cards with a round falloff,
+ * centered on the piece, sized from the piece and its brightness, tinted with its color.
+ * This stands in for bloom.
+ */
+class HaloFamily(
+    private val source: PartFamily,
+    cards: MeshResource,
+    falloff: TextureResource?,
+    private val groups: Int,
+    /** Halo size as a multiple of the piece's size. */
+    private val size: Float,
+    /** Halo strength as a multiple of the piece's color. */
+    private val gain: Float,
+    /** Share of the full size a dark piece's halo shrinks to. */
+    private val minScale: Float,
+) : PartRenderer {
+    private val inst = InstancedRenderer("HALO_${source.name}", cards, FamilyRenderer.Look.HALO, falloff, source.capacity, groups)
+
+    override val drawCount: Int get() = if (inst.ok) groups else 0
+    override val metalEntities: List<Entity> get() = emptyList()
+
+    override fun build(parent: Entity) = inst.build(parent)
+
+    override fun apply(pose: PoseBuffer) {
+        if (!inst.ok) return
+        val t = pose.transforms(source)
+        val a = pose.appearance(source)
+        inst.begin()
+        for (n in 0 until source.capacity) {
+            val o = n * PoseBuffer.TRANSFORM_STRIDE
+            val c = n * PoseBuffer.APPEARANCE_STRIDE
+            val r = a[c]; val g = a[c + 1]; val b = a[c + 2]
+            val bright = maxOf(r, maxOf(g, b)).coerceAtMost(1f)
+            val visible = a[c + 3] > 0.5f && bright > 0.02f
+            // Long pieces get long halos, but no axis thinner than half the longest one.
+            val sx = t[o + 7]; val sy = t[o + 8]; val sz = t[o + 9]
+            val floor = 0.5f * maxOf(sx, maxOf(sy, sz))
+            val k = size * (minScale + (1f - minScale) * bright)
+            inst.set(
+                n, t[o], t[o + 1], t[o + 2], t[o + 3], t[o + 4], t[o + 5], t[o + 6],
+                maxOf(sx, floor) * k, maxOf(sy, floor) * k, maxOf(sz, floor) * k,
+                r * gain, g * gain, b * gain, visible,
+            )
         }
         inst.end()
     }

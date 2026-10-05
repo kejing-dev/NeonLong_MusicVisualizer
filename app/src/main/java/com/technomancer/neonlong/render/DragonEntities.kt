@@ -5,6 +5,7 @@ import com.pico.spatial.core.ecs.CollisionComponent
 import com.pico.spatial.core.ecs.Entity
 import com.pico.spatial.core.ecs.HoverEffectComponent
 import com.pico.spatial.core.ecs.InteractableComponent
+import com.pico.spatial.core.ecs.PointLightComponent
 import com.pico.spatial.core.ecs.TransformComponent
 import com.pico.spatial.core.ecs.resource.PhysicsMaterialResource
 import com.pico.spatial.core.ecs.resource.ShapeResource
@@ -16,9 +17,13 @@ import com.technomancer.neonlong.app.LOG_TAG
 import com.technomancer.neonlong.app.SdkMath
 import com.technomancer.neonlong.ecs.components.SegmentTouchComponent
 import com.technomancer.neonlong.logic.config.DragonConfig
+import com.technomancer.neonlong.logic.config.GlowConfig
 import com.technomancer.neonlong.logic.config.SceneConfig
 import com.technomancer.neonlong.logic.config.UiConfig
 import com.technomancer.neonlong.logic.dragon.BodyLayout
+import com.technomancer.neonlong.logic.dragon.DragonSimulation
+import com.technomancer.neonlong.logic.math.Basis
+import com.technomancer.neonlong.logic.math.Color3
 import com.technomancer.neonlong.logic.dragon.Fibers
 import com.technomancer.neonlong.render.FamilyRenderer.Look
 import com.technomancer.neonlong.logic.dragon.PartFamily
@@ -45,6 +50,13 @@ class DragonEntities {
     private var badgeGain = -1f
     private var lightRig: Entity? = null
 
+    /** Colored lights riding the body, one per entry of [GlowConfig.bodyLightU], and the pearl's light. */
+    private val bodyLights = ArrayList<Entity>()
+    private var pearlLight: Entity? = null
+    private var glowConfig: GlowConfig? = null
+    private val lightFrame = Basis()
+    private val lightColor = Color3()
+
     private var parts: List<PartRenderer> = emptyList()
     private var tubes: List<PartRenderer> = emptyList()
 
@@ -59,13 +71,15 @@ class DragonEntities {
         private set
 
     /** Builds DragonRoot with every body family, the turntable and the badge. */
-    suspend fun build(scene: SceneConfig, lib: MeshLibrary, registry: EntityRegistry, fibers: Fibers): List<Entity> {
+    suspend fun build(scene: SceneConfig, glow: GlowConfig, lib: MeshLibrary, registry: EntityRegistry, fibers: Fibers): List<Entity> {
+        Glow.boost = glow.boost
+        glowConfig = glow
         val rootEntity = Entity().apply {
             setName(ROOT)
             components.set(TransformComponent())
         }
         // Dorsal blocks keep one entity each: they're what the user touches and hovers.
-        val dorsal = SingleFamily(FamilyRenderer(PartFamily.SEG_DORSAL, lib.block, Look.METAL, lib.facade)) { n, e ->
+        val dorsal = SingleFamily(FamilyRenderer(PartFamily.SEG_DORSAL, lib.block, Look.METAL, lib.bodySkin)) { n, e ->
             e.components.set(touchable(Vector3(1f, 1f, 1f)))
             e.components.set(InteractableComponent())
             e.components.set(HoverEffectComponent())
@@ -76,9 +90,9 @@ class DragonEntities {
         // color step per body segment, per tail ribbon and per flame.
         parts = listOf(
             dorsal,
-            InstancedFamily(PartFamily.SEG_TIER, lib.block, Look.METAL, lib.facade, groups = 27),
-            InstancedFamily(PartFamily.SEG_BELLY, lib.block, Look.METAL, lib.facade, groups = 27),
-            InstancedFamily(PartFamily.SIDE_PLATE, lib.block, Look.METAL, lib.facade, groups = 54),
+            InstancedFamily(PartFamily.SEG_TIER, lib.block, Look.METAL, lib.bodySkin, groups = 27),
+            InstancedFamily(PartFamily.SEG_BELLY, lib.block, Look.METAL, lib.bodySkin, groups = 27),
+            InstancedFamily(PartFamily.SIDE_PLATE, lib.block, Look.METAL, lib.bodySkin, groups = 54),
             InstancedFamily(PartFamily.FRAME_RING, lib.squareRing, Look.NEON, null, groups = 27),
             InstancedFamily(PartFamily.BELLY_LIGHT, lib.block, Look.NEON, null, groups = 36),
             InstancedFamily(PartFamily.TOWER_BODY, lib.tower, Look.TOWER, lib.facade, groups = 81),
@@ -87,8 +101,8 @@ class DragonEntities {
             InstancedFamily(PartFamily.BEACON, lib.ball, Look.NEON, null, groups = 81),
             InstancedFamily(PartFamily.PISTON_SLEEVE, lib.cylBase, Look.CHROME, null, groups = 2),
             InstancedFamily(PartFamily.PISTON_ROD, lib.cylBase, Look.CHROME, null, groups = 2),
-            SingleFamily(FamilyRenderer(PartFamily.HEAD, lib.headZones[0], Look.METAL, lib.facade, meshes = lib.headZones)),
-            SingleFamily(FamilyRenderer(PartFamily.JAW, lib.jaw, Look.METAL, lib.facade)),
+            SingleFamily(FamilyRenderer(PartFamily.HEAD, lib.headZones[0], Look.METAL, lib.bodySkin, meshes = lib.headZones)),
+            SingleFamily(FamilyRenderer(PartFamily.JAW, lib.jaw, Look.METAL, lib.bodySkin)),
             SingleFamily(FamilyRenderer(PartFamily.EYE, lib.block, Look.NEON)),
             SingleFamily(FamilyRenderer(PartFamily.EYE_BEZEL, lib.block, Look.NEON)),
             SingleFamily(FamilyRenderer(PartFamily.GLYPH, lib.glyphPlate, Look.GLYPH, lib.glyph)),
@@ -106,10 +120,21 @@ class DragonEntities {
             SingleFamily(FamilyRenderer(PartFamily.PEARL_SHELL, lib.pearlShell, Look.GLASS)),
             SingleFamily(FamilyRenderer(PartFamily.PEARL_RING, lib.pearlRing, Look.NEON)),
             InstancedFamily(PartFamily.BREATH, lib.block, Look.ADDITIVE, null, groups = 32),
+            // Soft halos stand in for bloom around the brightest parts.
+            HaloFamily(PartFamily.BEACON, lib.haloCards, lib.halo, groups = 27, glow.beaconHaloSize, glow.beaconHaloGain, glow.haloMinScale),
+            HaloFamily(PartFamily.BELLY_LIGHT, lib.haloCards, lib.halo, groups = 12, glow.bellyHaloSize, glow.bellyHaloGain, glow.haloMinScale),
+            HaloFamily(PartFamily.JOINT_RING, lib.haloCards, lib.halo, groups = 2, glow.jointHaloSize, glow.jointHaloGain, glow.haloMinScale),
+            HaloFamily(PartFamily.EYE, lib.haloCards, lib.halo, groups = 1, glow.eyeHaloSize, glow.eyeHaloGain, glow.haloMinScale),
+            HaloFamily(PartFamily.PEARL_CORE, lib.haloCards, lib.halo, groups = 1, glow.pearlHaloSize, glow.pearlHaloGain, glow.haloMinScale),
         )
         val f = fibers
         tubes = listOf(
             InstancedChains("CORE", arrayOf(f.core), CORE_CHUNKS, lib.cylBase, false, groups = 54, startFrac = CORE_START_U, endFrac = CORE_END_U),
+            // A wider, fainter copy of the core that adds light: its glow.
+            InstancedChains(
+                "CORE_SLEEVE", arrayOf(f.core), CORE_CHUNKS, lib.cylBase, true, groups = 18,
+                startFrac = CORE_START_U, endFrac = CORE_END_U, radiusMul = glow.coreSleeveRadius, gain = glow.coreSleeveGain,
+            ),
             InstancedChains("TUFT", f.tufts, 4, lib.cylBase, true, groups = 20),
             InstancedChains("TAIL", f.tail, 6, lib.cylBase, true, groups = 36),
             InstancedChains("PEARL_FLAME", f.pearlFlames, 4, lib.cylBase, true, groups = 14),
@@ -118,6 +143,22 @@ class DragonEntities {
         for (p in parts + tubes) {
             p.build(rootEntity)
             yield() // keep the main thread responsive while building
+        }
+
+        // Colored lights that ride the body and the pearl, so the dark metal picks up the neon.
+        try {
+            for (i in glow.bodyLightU.indices) {
+                bodyLights += Entity().apply {
+                    setName("BodyLight_$i")
+                    components.set(PointLightComponent(Color4(1f, 1f, 1f, 1f), glow.bodyLightIntensity, glow.bodyLightRadius))
+                }.also { rootEntity.addChild(it) }
+            }
+            pearlLight = Entity().apply {
+                setName("PearlLight")
+                components.set(PointLightComponent(Color4(1f, 1f, 1f, 1f), glow.pearlLightIntensity, glow.pearlLightRadius))
+            }.also { rootEntity.addChild(it) }
+        } catch (e: Throwable) {
+            Log.w(LOG_TAG, "[boot] body lights unavailable: ${e.javaClass.simpleName}: ${e.message}")
         }
 
         // Metal parts reflect the night environment.
@@ -191,6 +232,11 @@ class DragonEntities {
             // Rotate the centering offset too, so the dragon turns about the volume's center.
             setPosition(Vector3(c * cx + s * cz, cy, -s * cx + c * cz))
         }
+        // Light reach is set in meters, so it follows the dragon's size.
+        if (width != appliedWidth) glowConfig?.let { glow ->
+            for (l in bodyLights) l.components[PointLightComponent::class.java]?.attenuationRadius = glow.bodyLightRadius * k
+            pearlLight?.components?.get(PointLightComponent::class.java)?.attenuationRadius = glow.pearlLightRadius * k
+        }
         appliedWidth = width
         appliedYaw = yaw
         return k
@@ -201,6 +247,26 @@ class DragonEntities {
         entity?.components?.get(SegmentTouchComponent::class.java)?.segment ?: -1
 
     /** Destroys everything built by [build]. */
+    /**
+     * Moves the body lights along the spine and tints them with the palette color at their
+     * position; the pearl's light follows the pearl in the accent color.
+     */
+    fun updateLights(sim: DragonSimulation, pose: PoseBuffer) {
+        val glow = glowConfig ?: return
+        for (i in bodyLights.indices) {
+            val u = glow.bodyLightU[i]
+            val f = sim.spine.frameAt(u, lightFrame)
+            sim.palette.palAt(u, lightColor)
+            bodyLights[i].components[TransformComponent::class.java]?.setPosition(Vector3(f.p.x, f.p.y, f.p.z))
+            bodyLights[i].components[PointLightComponent::class.java]?.color = Color4(lightColor.r, lightColor.g, lightColor.b, 1f)
+        }
+        val pearl = pearlLight ?: return
+        val t = pose.transforms(PartFamily.PEARL_CORE)
+        val a = sim.palette.accent
+        pearl.components[TransformComponent::class.java]?.setPosition(Vector3(t[0], t[1], t[2]))
+        pearl.components[PointLightComponent::class.java]?.color = Color4(a.r, a.g, a.b, 1f)
+    }
+
     /**
      * Pulses the badge glyph at [UiConfig.badgePulseHz] with [UiConfig.badgePulseGain] while
      * [pulsing]; otherwise holds it steady. [timeS] is the simulation time.
@@ -228,6 +294,8 @@ class DragonEntities {
         turntable = null
         badge = null
         badgeGlyph = null
+        bodyLights.clear()
+        pearlLight = null
         badgeGain = -1f
         parts = emptyList()
         tubes = emptyList()

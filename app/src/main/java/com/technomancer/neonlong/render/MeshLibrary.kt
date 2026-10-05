@@ -38,7 +38,13 @@ class MeshLibrary private constructor(
     val pearlCore: MeshResource,
     val pearlShell: MeshResource,
     val pearlRing: MeshResource,
+    /** Three crossed cards for soft glow halos. */
+    val haloCards: MeshResource,
     val facade: TextureResource?,
+    /** Emissive skin for body and head blocks. */
+    val bodySkin: TextureResource?,
+    /** Soft round falloff for additive halos. */
+    val halo: TextureResource?,
     val armour: TextureResource?,
     val glyph: TextureResource?,
     val nightEnvironment: TextureResource?,
@@ -71,7 +77,10 @@ class MeshLibrary private constructor(
                 pearlCore = step { mesh(context, "GEN_PearlCore") { MeshResource.createSphere(0.5f) } },
                 pearlShell = step { mesh(context, "GEN_PearlShell") { MeshResource.createSphere(0.72f) } },
                 pearlRing = step { mesh(context, "GEN_PearlRing") { MeshResource.createBox(Vector3(2f, 2f, 0.04f), 0f) } },
+                haloCards = step { mesh(context, "GEN_HaloQuad") { MeshResource.createBox(Vector3(0.01f, 0.01f, 0.01f), 0f) } },
                 facade = step { texture(context, "GEN_Facade") },
+                bodySkin = step { texture(context, "GEN_BodySkin") },
+                halo = step { texture(context, "GEN_Halo") },
                 armour = step { texture(context, "GEN_Armour") },
                 glyph = step { texture(context, "GEN_Glyph_Long") },
                 nightEnvironment = step { texture(context, "GEN_IBL_Night") },

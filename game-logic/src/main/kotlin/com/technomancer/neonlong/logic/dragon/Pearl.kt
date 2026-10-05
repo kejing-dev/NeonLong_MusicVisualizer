@@ -5,11 +5,12 @@ import com.technomancer.neonlong.logic.math.Quat
 import com.technomancer.neonlong.logic.math.Vec3
 import kotlin.math.PI
 import kotlin.math.cos
+import kotlin.math.exp
 import kotlin.math.sin
 
 /**
- * The flaming pearl the dragon chases: it flies a little ahead on the loop, pulsing with the
- * volume. A glowing core, a spinning glass shell, three rings for bass, mids and highs, and
+ * The flaming pearl the dragon chases: it flies a fixed distance ahead of the head on the
+ * loop, pulsing with the volume. A glowing core, a spinning glass shell, three rings for bass, mids and highs, and
  * 14 flame ribbons. After a Call it parks near the front of the volume for a few seconds.
  */
 class Pearl {
@@ -21,19 +22,47 @@ class Pearl {
     private var shellAngle = 0f
     private var ringTime = 0f
 
+    private val target = Vec3()
+    private val base = Vec3()
+    private val tan = Vec3()
+    private var placed = false
+
     /**
-     * Places the pearl. [pull] and [frontZ] apply the same loop pull as the spine; while
-     * [parked] it eases toward a spot near the front.
+     * Places the pearl a fixed distance ahead of the head along the flight loop, so it leads
+     * the dragon down the same path. It also takes on most of the head's sway away from the
+     * loop, bobs gently, and eases toward that spot instead of jumping. [pull] and [frontZ]
+     * apply the same loop pull as the spine; while [parked] it eases toward a spot near the front.
      */
-    fun place(sHead: Float, pull: Float, frontZ: Float, parked: Boolean, parkBlend: Float) {
-        FlightPath.basePt(sHead + 0.45f, center)
-        center.y += 1.6f
-        center.z = center.z * (1f - pull) + pull * frontZ
+    fun place(sHead: Float, pull: Float, frontZ: Float, parked: Boolean, parkBlend: Float, head: Vec3, t: Float, dt: Float) {
+        // Walk LEAD units of path length ahead of the head (the loop's speed per radian varies).
+        var s = sHead
+        val stepLen = LEAD / LEAD_STEPS
+        for (i in 0 until LEAD_STEPS) {
+            FlightPath.tangent(s, tan)
+            s += stepLen / tan.length().coerceAtLeast(1f)
+        }
+        FlightPath.basePt(s, target)
+        target.z = target.z * (1f - pull) + pull * frontZ
+        // The head's offset from its own spot on the loop (body waves, roll).
+        FlightPath.basePt(sHead, base)
+        base.z = base.z * (1f - pull) + pull * frontZ
+        target.x += (head.x - base.x) * FOLLOW
+        target.y += (head.y - base.y) * FOLLOW + RISE + BOB * sin(1.3f * t)
+        target.z += (head.z - base.z) * FOLLOW
         if (parked || parkBlend > 0f) {
             val k = parkBlend
-            center.x += (0f - center.x) * k
-            center.y += (PARK_Y - center.y) * k
-            center.z += (frontZ - center.z) * k
+            target.x += (0f - target.x) * k
+            target.y += (PARK_Y - target.y) * k
+            target.z += (frontZ - target.z) * k
+        }
+        if (!placed) {
+            center.set(target)
+            placed = true
+        } else {
+            val k = 1f - exp(-EASE * dt)
+            center.x += (target.x - center.x) * k
+            center.y += (target.y - center.y) * k
+            center.z += (target.z - center.z) * k
         }
     }
 
@@ -93,5 +122,15 @@ class Pearl {
         const val FLAMES = 14
         /** Height the pearl parks at after a Call (model units). */
         const val PARK_Y = 2.5f
+        /** How far ahead of the head the pearl flies, along the loop (model units). */
+        const val LEAD = 9.5f
+        private const val LEAD_STEPS = 6
+        /** Share of the head's sway the pearl takes on. */
+        const val FOLLOW = 0.75f
+        /** Height above the loop, and how far it bobs up and down. */
+        const val RISE = 0.9f
+        const val BOB = 0.25f
+        /** How quickly it eases to its spot, per second. */
+        const val EASE = 5f
     }
 }

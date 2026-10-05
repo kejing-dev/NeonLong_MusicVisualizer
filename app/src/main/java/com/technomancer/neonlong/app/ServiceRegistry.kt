@@ -10,6 +10,7 @@ import com.technomancer.neonlong.logic.config.AudioConfig
 import com.technomancer.neonlong.logic.config.ComfortConfig
 import com.technomancer.neonlong.logic.config.DragonConfig
 import com.technomancer.neonlong.logic.config.FlashConfig
+import com.technomancer.neonlong.logic.config.GlowConfig
 import com.technomancer.neonlong.logic.config.PaletteConfig
 import com.technomancer.neonlong.logic.config.SceneConfig
 import com.technomancer.neonlong.logic.config.UiConfig
@@ -51,6 +52,8 @@ object ServiceRegistry {
     lateinit var lod: Lod
         private set
     lateinit var uiConfig: UiConfig
+        private set
+    lateinit var glowConfig: GlowConfig
         private set
     lateinit var settings: SettingsStore
         private set
@@ -102,6 +105,7 @@ object ServiceRegistry {
         flashConfig = ConfigLoader.load(context, "flash", FlashConfig.serializer(), FlashConfig())
         paletteConfig = ConfigLoader.load(context, "palettes", PaletteConfig.serializer(), PaletteConfig())
         uiConfig = ConfigLoader.load(context, "ui", UiConfig.serializer(), UiConfig())
+        glowConfig = ConfigLoader.load(context, "glow", GlowConfig.serializer(), GlowConfig())
         settings = SettingsStore(context, paletteConfig.palettes.size, sceneConfig.minWidth, sceneConfig.maxWidth)
         settings.loadBlocking()
         simulation = DragonSimulation(dragonConfig, comfortConfig, flashConfig, paletteConfig)

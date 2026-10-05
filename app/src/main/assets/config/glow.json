@@ -1,0 +1,21 @@
+{
+  "boost": 1.4,
+  "beaconHaloSize": 4.0,
+  "beaconHaloGain": 0.6,
+  "bellyHaloSize": 2.6,
+  "bellyHaloGain": 0.5,
+  "eyeHaloSize": 3.2,
+  "eyeHaloGain": 0.7,
+  "pearlHaloSize": 3.6,
+  "pearlHaloGain": 0.7,
+  "jointHaloSize": 2.4,
+  "jointHaloGain": 0.45,
+  "haloMinScale": 0.6,
+  "coreSleeveRadius": 1.45,
+  "coreSleeveGain": 0.4,
+  "bodyLightU": [0.08, 0.4, 0.75],
+  "bodyLightIntensity": 2.0,
+  "bodyLightRadius": 26.0,
+  "pearlLightIntensity": 2.5,
+  "pearlLightRadius": 22.0
+}

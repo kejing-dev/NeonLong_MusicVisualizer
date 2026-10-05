@@ -1,5 +1,6 @@
 package com.technomancer.neonlong.logic.dragon
 
+import com.technomancer.neonlong.logic.config.DragonConfig
 import com.technomancer.neonlong.logic.math.Basis
 import com.technomancer.neonlong.logic.math.Color3
 import com.technomancer.neonlong.logic.math.Vec3
@@ -15,7 +16,8 @@ class TailFan {
     private val to = Color3()
 
     fun write(fibers: Fibers, spine: Spine, palette: Palette, bands: FloatArray, t: Float, high: Float, gain: Float) {
-        spine.frameAt(1f, f)
+        // The fan grows out of the middle of the last body block, so it's joined to the body.
+        spine.frameAt(ROOT_U, f)
         palette.palAt(0.85f, from)
         val g = (0.7f + 1.6f * high) * gain
         for (i in 0 until RIBBONS) {
@@ -44,5 +46,7 @@ class TailFan {
 
     companion object {
         const val RIBBONS = 18
+        /** Where the fan is rooted on the spine: the center of the last segment. */
+        val ROOT_U = BodyLayout.segmentU(DragonConfig.SEGMENTS - 1)
     }
 }

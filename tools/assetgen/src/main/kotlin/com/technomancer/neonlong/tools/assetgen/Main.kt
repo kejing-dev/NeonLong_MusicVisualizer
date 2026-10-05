@@ -19,6 +19,7 @@ fun allModels(): List<Pair<MeshBuilder, MaterialFactors>> = HeadParts.headZones(
     HeadParts.jaw() to BLOCK,
     HeadParts.antlers() to NEON,
     HeadParts.glyphPlate() to NEON,
+    GlowParts.haloCards() to NEON,
     LimbParts.blade() to NEON,
     LimbParts.limb() to ARMOUR,
     LimbParts.talon() to NEON,
@@ -50,6 +51,8 @@ fun main(args: Array<String>) {
         "GEN_Armour" to TextureGen.armour(),
         "GEN_ArmourBump" to TextureGen.armour(bump = true),
         "GEN_Glow" to TextureGen.glow(),
+        "GEN_BodySkin" to TextureGen.bodySkin(),
+        "GEN_Halo" to TextureGen.halo(),
         "GEN_IBL_Night" to TextureGen.nightEnvironment(),
         "GEN_Glyph_Long" to TextureGen.glyph(File(args[2])) { report.note(it) },
     )

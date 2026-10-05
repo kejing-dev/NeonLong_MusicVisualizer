@@ -187,6 +187,100 @@ object TextureGen {
         return img
     }
 
+    /**
+     * Skin for the body and head blocks (1024²): a 回 key-fret band under the top edge, rows of
+     * small lit windows, panel seams with rivets, circuit traces ending in pads, a thin inner
+     * outline, and the bright neon band along the outer edges.
+     */
+    fun bodySkin(): BufferedImage {
+        val s = 1024.0
+        val (img, g) = canvas(1024, 1024)
+        val rng = Rng(11)
+
+        // Windows: 12 rows × 14 columns between the fret band and the bottom margin.
+        val top = 0.27 * s
+        val rowH = (0.90 * s - top) / 12
+        val colW = (0.88 * s) / 14
+        for (row in 0 until 12) {
+            g.color = white(0.06)
+            g.fill(Rectangle2D.Double(0.06 * s, top + row * rowH, 0.88 * s, 2.0))
+            for (col in 0 until 14) {
+                // Mostly dark, so the face stays black from a distance and the lit windows stand out.
+                val lit = rng.next() > 0.68
+                g.color = white(if (lit) 0.55 + 0.45 * rng.next() else 0.0)
+                g.fill(Rectangle2D.Double(0.06 * s + col * colW + colW * 0.2, top + row * rowH + rowH * 0.28, colW * 0.5, rowH * 0.42))
+            }
+        }
+        // Panel seams and rivets.
+        g.stroke = BasicStroke(2f)
+        g.color = white(0.22)
+        for (k in 1 until 4) g.draw(Line2D.Double(s * k / 4, 0.25 * s, s * k / 4, 0.93 * s))
+        g.draw(Line2D.Double(0.05 * s, 0.585 * s, 0.95 * s, 0.585 * s))
+        g.color = white(0.65)
+        for (k in 1 until 4) for (j in 0..4) {
+            val y = (0.29 + 0.15 * j) * s
+            g.fill(Ellipse2D.Double(s * k / 4 - 5, y - 5, 10.0, 10.0))
+        }
+        // 回 key-fret band.
+        g.color = white(0.85)
+        g.stroke = BasicStroke(4f)
+        val y0 = 0.10 * s
+        val cell = 0.105 * s
+        var x = 0.065 * s
+        while (x + cell < 0.94 * s) {
+            val p = Path2D.Double()
+            p.moveTo(x, y0 + cell); p.lineTo(x, y0); p.lineTo(x + cell, y0); p.lineTo(x + cell, y0 + 0.8 * cell)
+            p.lineTo(x + 0.3 * cell, y0 + 0.8 * cell); p.lineTo(x + 0.3 * cell, y0 + 0.35 * cell)
+            p.lineTo(x + 0.65 * cell, y0 + 0.35 * cell); p.lineTo(x + 0.65 * cell, y0 + 0.55 * cell)
+            g.draw(p)
+            x += 1.2 * cell
+        }
+        g.stroke = BasicStroke(4f)
+        g.draw(Line2D.Double(0.06 * s, y0 + cell + 12, 0.94 * s, y0 + cell + 12))
+        // Circuit traces: three steps each, right or diagonal, ending in a pad.
+        repeat(9) {
+            var px = (0.08 + rng.next() * 0.6) * s
+            var py = (0.32 + rng.next() * 0.55) * s
+            g.color = white(0.55 + rng.next() * 0.45)
+            g.stroke = BasicStroke((2.5 + rng.next() * 2.0).toFloat(), BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND)
+            repeat(3) {
+                val len = 40 + rng.next() * 100
+                val diagonal = rng.next() < 0.5
+                val nx = min(px + if (diagonal) len * 0.7 else len, 0.93 * s)
+                val ny = (py + if (diagonal) (if (rng.next() < 0.5) -1 else 1) * len * 0.7 else 0.0).coerceIn(0.28 * s, 0.92 * s)
+                g.draw(Line2D.Double(px, py, nx, ny))
+                px = nx; py = ny
+            }
+            g.fill(Ellipse2D.Double(px - 8, py - 8, 16.0, 16.0))
+        }
+        // Thin inner outline.
+        g.color = white(0.4)
+        g.stroke = BasicStroke(3f)
+        g.draw(Rectangle2D.Double(0.055 * s, 0.055 * s, 0.89 * s, 0.89 * s))
+        g.dispose()
+        addEdgeGlow(img, width = 0.04, gain = 1.5)
+        return img
+    }
+
+    /**
+     * Soft round glow for additive halos (128²): white fading to black from the center, with
+     * no transparency, so it adds light without darkening anything.
+     */
+    fun halo(): BufferedImage {
+        val n = 128
+        val img = BufferedImage(n, n, BufferedImage.TYPE_INT_ARGB)
+        for (y in 0 until n) for (x in 0 until n) {
+            val dx = (x + 0.5) / n * 2 - 1
+            val dy = (y + 0.5) / n * 2 - 1
+            val r = kotlin.math.sqrt(dx * dx + dy * dy)
+            // A bright core with a long, soft tail.
+            val a = if (r >= 1.0) 0.0 else (1 - r) * (1 - r) * (0.55 + 0.45 * kotlin.math.exp(-r * r * 18))
+            val v = (a.coerceIn(0.0, 1.0) * 255).roundToInt()
+            img.setRGB(x, y, (0xff shl 24) or (v shl 16) or (v shl 8) or v)
+        }
+        return img
+    }
+
     /** Soft round glow (64²): alpha 1 at the center, 0.5 at 30%, 0 at the edge. */
     fun glow(): BufferedImage {
         val n = 64

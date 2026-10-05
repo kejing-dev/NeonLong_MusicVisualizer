@@ -55,8 +55,8 @@ class Report {
             // + 4 eyes/bezels + 160 breath particles
             "GEN_Block" to 27 * 3 + 162 + 36 + 81 + 60 + 4 + 4 + 160,
             "GEN_Tower3Tier" to 81,
-            // 81 spires + 104 pistons + tube pieces (80 core + 80 tufts + 108 tail + 56 pearl flames + 24 cables)
-            "GEN_CylBase" to 81 + 104 + 80 + 80 + 108 + 56 + 24,
+            // 81 spires + 104 pistons + tube pieces (80 core + 80 core glow sleeve + 80 tufts + 108 tail + 56 pearl flames + 24 cables)
+            "GEN_CylBase" to 81 + 104 + 80 + 80 + 80 + 108 + 56 + 24,
             // 81 beacons + 8 joint balls + mouth glow
             "GEN_Ball" to 81 + 8 + 1,
             "GEN_SquareRing" to 27,
@@ -65,6 +65,8 @@ class Report {
             "GEN_Jaw" to 1,
             "GEN_Antlers" to 1,
             "GEN_GlyphPlate" to 1,
+            // halos: 81 beacons + 36 belly lights + 8 joint rings + 2 eyes + 1 pearl
+            "GEN_HaloQuad" to 81 + 36 + 8 + 2 + 1,
             "GEN_Blade" to 24,
             // 8 limb pieces + 16 toes
             "GEN_Limb" to 24,

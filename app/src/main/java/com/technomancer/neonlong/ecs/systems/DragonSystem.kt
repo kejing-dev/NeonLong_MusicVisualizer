@@ -70,6 +70,7 @@ class DragonSystem : System() {
 
         sim.tick(context.deltaTime, reg.input, reg.pose)
         ents.applyParts(reg.pose)
+        ents.updateLights(sim, reg.pose)
         // The badge pulses until the panel has been opened once, while nothing plays.
         val pulsing = !reg.ui.panelOpenedOnce && reg.audio.state != AudioEngine.State.PLAYING
         ents.updateBadge(sim.time, pulsing, reg.uiConfig)
