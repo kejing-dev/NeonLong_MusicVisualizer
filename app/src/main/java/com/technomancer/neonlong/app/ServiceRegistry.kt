@@ -1,8 +1,6 @@
 package com.technomancer.neonlong.app
 
 import android.content.Context
-import android.net.Uri
-import com.technomancer.neonlong.R
 import com.technomancer.neonlong.audio.AudioEngine
 import com.technomancer.neonlong.audio.UiSfx
 import com.technomancer.neonlong.config.ConfigLoader
@@ -94,22 +92,6 @@ object ServiceRegistry {
     /** Debug only: start the demo as soon as the dragon is built. */
     @Volatile
     var autoPlay = false
-
-    /** Debug only: a music file to load at startup, by path. */
-    @Volatile
-    var debugFilePath: String? = null
-
-    /**
-     * Loads one of the user's music files and plays it when it's decoded. If it can't be
-     * played, a toast says so and the current music carries on.
-     */
-    fun loadMusic(uri: Uri) {
-        audio.loadFile(
-            uri,
-            onReady = { events.post(InputEvents.FILE_READY) },
-            onError = { ui.showToast(R.string.toast_bad_file) },
-        )
-    }
 
     /** Debug only: forces Reduce motion on, whatever the setting says. */
     @Volatile

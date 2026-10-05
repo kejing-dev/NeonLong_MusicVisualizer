@@ -1,6 +1,5 @@
 package com.technomancer.neonlong.ecs.systems
 
-import android.net.Uri
 import android.util.Log
 import com.pico.spatial.core.ecs.SceneUpdateContext
 import com.pico.spatial.core.ecs.System
@@ -10,7 +9,6 @@ import com.technomancer.neonlong.audio.AudioEngine
 import com.technomancer.neonlong.input.InputEvents
 import com.technomancer.neonlong.logic.state.Settings
 import com.technomancer.neonlong.logic.state.SettingsModel
-import java.io.File
 
 /**
  * Applies queued input (touches, transport, Call / Send / Flash) and changed settings, steps the dragon simulation
@@ -49,12 +47,6 @@ class DragonSystem : System() {
             reg.autoPlay = false
             reg.audio.play(ents.root)
         }
-        // Debug only: load a file by path instead of through the picker.
-        val debugFile = reg.debugFilePath
-        if (debugFile != null && settings.safetySeen) {
-            reg.debugFilePath = null
-            reg.loadMusic(Uri.fromFile(File(debugFile)))
-        }
 
         val sim = reg.simulation
         reg.events.drain { kind, arg ->
@@ -65,8 +57,6 @@ class DragonSystem : System() {
                 InputEvents.FLASH -> { sim.flash(); Log.i(LOG_TAG, "[input] flash") }
                 InputEvents.PLAY_PAUSE -> if (reg.settings.current.safetySeen) reg.audio.togglePlay(ents.root)
                 InputEvents.RESTART -> reg.audio.restart()
-                InputEvents.FILE_READY -> reg.audio.startLoadedFile(ents.root)
-                InputEvents.USE_DEMO -> reg.audio.useDemo(ents.root)
             }
         }
 

@@ -29,8 +29,6 @@ data class AudioConfig(
     val beatPulseDecay: Float = 6f,
     /** Idle breathing when nothing plays. */
     val idleBpm: Float = 96f,
-    /** Longest part of a user's file that's loaded, in minutes (it's held in memory). */
-    val maxFileMinutes: Int = 12,
     /** Default band sensitivity (the user can set 0.5–2.0). */
     val sensitivity: Float = 1.0f,
 )

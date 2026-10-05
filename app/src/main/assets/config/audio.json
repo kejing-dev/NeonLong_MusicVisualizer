@@ -15,6 +15,5 @@
   "beatBandsHi": 6,
   "beatPulseDecay": 6.0,
   "idleBpm": 96.0,
-  "maxFileMinutes": 12,
   "sensitivity": 1.0
 }

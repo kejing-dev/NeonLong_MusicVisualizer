@@ -47,7 +47,5 @@ class InputEvents(capacity: Int = 64) {
         const val FLASH = 4
         const val PLAY_PAUSE = 6
         const val RESTART = 7
-        const val FILE_READY = 8
-        const val USE_DEMO = 9
     }
 }

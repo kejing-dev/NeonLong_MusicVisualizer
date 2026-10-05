@@ -17,7 +17,6 @@ class SpatialApplication : Application() {
             ServiceRegistry.spikeEnabled = DebugFlags.systemFlag("debug.neonlong.spike")
             ServiceRegistry.reducedMotion = DebugFlags.systemFlag("debug.neonlong.reducedmotion")
             ServiceRegistry.autoPlay = DebugFlags.systemFlag("debug.neonlong.autoplay")
-            ServiceRegistry.debugFilePath = DebugFlags.systemString("debug.neonlong.file")
         }
         launch(::mainApp)
     }

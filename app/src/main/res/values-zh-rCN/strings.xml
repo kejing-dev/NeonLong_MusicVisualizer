@@ -69,15 +69,4 @@
     <!-- 提示 -->
     <string name="toast_safety_first">请先阅读安全提示。</string>
     <string name="toast_bad_file">无法播放该文件。请尝试 MP3、AAC、FLAC、OGG 或 WAV 格式。</string>
-
-    <!-- Your music -->
-    <string name="status_loading">加载中…</string>
-    <string name="status_file">来自你的文件</string>
-    <string name="music_title">你的音乐</string>
-    <string name="music_browse">浏览文件</string>
-    <string name="music_folder_title">应用的“音乐”文件夹</string>
-    <string name="music_folder_empty">这里还没有音乐。</string>
-    <string name="music_folder_hint">如果没有文件浏览器，可将音乐复制到头显上的这个文件夹：%1$s</string>
-    <string name="music_privacy">读取你的音乐只是为了播放并驱动龙的动态，不会复制、保存或发送到任何地方。</string>
-    <string name="toast_no_picker">此头显没有文件浏览器。请将音乐复制到应用的“音乐”文件夹。</string>
 </resources>

@@ -69,15 +69,4 @@
     <!-- Toasts -->
     <string name="toast_safety_first">Read the safety notice first.</string>
     <string name="toast_bad_file">Couldn\'t play that file. Try MP3, AAC, FLAC, OGG or WAV.</string>
-
-    <!-- Your music -->
-    <string name="status_loading">Loading…</string>
-    <string name="status_file">From your files</string>
-    <string name="music_title">Your music</string>
-    <string name="music_browse">Browse files</string>
-    <string name="music_folder_title">In the app\'s Music folder</string>
-    <string name="music_folder_empty">No music there yet.</string>
-    <string name="music_folder_hint">To add music without the file browser, copy it into this folder on the headset: %1$s</string>
-    <string name="music_privacy">Your music is only read to play it and to move the dragon. It isn\'t copied, saved or sent anywhere.</string>
-    <string name="toast_no_picker">This headset has no file browser. Copy music into the app\'s Music folder instead.</string>
 </resources>
