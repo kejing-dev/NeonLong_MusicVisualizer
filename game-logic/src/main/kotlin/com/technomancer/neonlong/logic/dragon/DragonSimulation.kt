@@ -184,7 +184,7 @@ class DragonSimulation(
         pearl.place(sHead, pull, frontZ, parked, parkBlend, head.frame.p, time, step)
         pearl.write(out, out.fibers, palette, step, time, input.bass, input.mid, input.high, input.vol, input.beatPulse, input.reducedMotion, gain)
 
-        breath.update(step, head, input.bass, input.beatStrength)
+        breath.update(step, head, input.bass, input.beatStrength, input.dragonYaw)
         breath.write(out, palette, gain)
 
         pistons.write(out, place, frames, radius, depth, input.showSmallParts)

@@ -49,6 +49,8 @@ class DragonEntities {
     private var badgeGlyph: UnlitMaterial? = null
     private var badgeGain = -1f
     private var lightRig: Entity? = null
+    private var breathRoot: Entity? = null
+    private var breath: PartRenderer? = null
 
     /** Colored lights riding the body, one per entry of [GlowConfig.bodyLightU], and the pearl's light. */
     private val bodyLights = ArrayList<Entity>()
@@ -119,7 +121,6 @@ class DragonEntities {
             SingleFamily(FamilyRenderer(PartFamily.PEARL_CORE, lib.pearlCore, Look.NEON)),
             SingleFamily(FamilyRenderer(PartFamily.PEARL_SHELL, lib.pearlShell, Look.GLASS)),
             SingleFamily(FamilyRenderer(PartFamily.PEARL_RING, lib.pearlRing, Look.NEON)),
-            InstancedFamily(PartFamily.BREATH, lib.block, Look.ADDITIVE, null, groups = 32),
             // Soft halos stand in for bloom around the brightest parts.
             HaloFamily(PartFamily.BEACON, lib.haloCards, lib.halo, groups = 27, glow.beaconHaloSize, glow.beaconHaloGain, glow.haloMinScale),
             HaloFamily(PartFamily.BELLY_LIGHT, lib.haloCards, lib.halo, groups = 12, glow.bellyHaloSize, glow.bellyHaloGain, glow.haloMinScale),
@@ -145,6 +146,15 @@ class DragonEntities {
             yield() // keep the main thread responsive while building
         }
 
+        // The breath isn't part of the dragon: its particles are soft round glows drawn under
+        // their own node, which is sized and centered like the dragon but never turns with it.
+        val breathNode = Entity().apply {
+            setName(BREATH_ROOT)
+            components.set(TransformComponent())
+        }
+        breath = InstancedFamily(PartFamily.BREATH, lib.haloCards, Look.HALO, lib.halo, groups = 32).also { it.build(breathNode) }
+        breathRoot = breathNode
+
         // Colored lights that ride the body and the pearl, so the dark metal picks up the neon.
         try {
             for (i in glow.bodyLightU.indices) {
@@ -165,7 +175,7 @@ class DragonEntities {
         val lights = Lighting.create(lib.nightEnvironment)
         for (p in parts) for (e in p.metalEntities) e.components.set(Lighting.receiver(lights))
         lightRig = lights
-        materialCount = (parts + tubes).sumOf { it.drawCount }
+        materialCount = (parts + tubes).sumOf { it.drawCount } + (breath?.drawCount ?: 0)
         registry.put(ROOT, rootEntity)
         root = rootEntity
         appliedWidth = -1f
@@ -197,12 +207,13 @@ class DragonEntities {
         badge = badgeEntity
 
         Log.i(LOG_TAG, "[boot] dragon built: $materialCount draw calls and materials (instanced), turntable, badge")
-        return listOf(rootEntity, lights, ring, badgeEntity)
+        return listOf(rootEntity, breathNode, lights, ring, badgeEntity)
     }
 
     /** Copies the simulation's output onto the rigid body parts. */
     fun applyParts(pose: PoseBuffer) {
         for (p in parts) p.apply(pose)
+        breath?.apply(pose)
     }
 
     /**
@@ -231,6 +242,11 @@ class DragonEntities {
             setQuaternion(SdkMath.quat(0f, sin(yaw * 0.5f), 0f, cos(yaw * 0.5f)))
             // Rotate the centering offset too, so the dragon turns about the volume's center.
             setPosition(Vector3(c * cx + s * cz, cy, -s * cx + c * cz))
+        }
+        // Same size and centering for the breath, but it stays fixed in the room.
+        if (width != appliedWidth) breathRoot?.components?.get(TransformComponent::class.java)?.apply {
+            setScaleVector(Vector3(k, k, k))
+            setPosition(Vector3(cx, cy, cz))
         }
         // Light reach is set in meters, so it follows the dragon's size.
         if (width != appliedWidth) glowConfig?.let { glow ->
@@ -289,11 +305,14 @@ class DragonEntities {
         turntable?.destroy(true)
         badge?.destroy(true)
         lightRig?.destroy(true)
+        breathRoot?.destroy(true)
         lightRig = null
         root = null
         turntable = null
         badge = null
         badgeGlyph = null
+        breathRoot = null
+        breath = null
         bodyLights.clear()
         pearlLight = null
         badgeGain = -1f
@@ -307,6 +326,7 @@ class DragonEntities {
 
     companion object {
         const val ROOT = "DragonRoot"
+        const val BREATH_ROOT = "BreathRoot"
         /** Energy core pieces while it's drawn as a chain; short pieces keep bends smooth. */
         const val CORE_CHUNKS = 80
         /** Spine range the core is drawn over: from the center of the first body segment to the center of the last, so both ends stay hidden inside blocks. */

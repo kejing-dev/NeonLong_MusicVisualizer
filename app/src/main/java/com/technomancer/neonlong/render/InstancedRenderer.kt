@@ -38,6 +38,8 @@ class InstancedRenderer(
     private val sumRgb = FloatArray(groups * 3)
     private val members = IntArray(groups)
     private val lastRgb = FloatArray(groups * 3) { -1f }
+    /** Copies already hidden in the renderer; they cost nothing until they're shown again. */
+    private val hidden = BooleanArray(count)
 
     /** False if instancing couldn't be set up; nothing is drawn then (logged). */
     var ok = false
@@ -86,17 +88,18 @@ class InstancedRenderer(
     ) {
         val grp = groupOf[n]
         val res = instances[grp] ?: return
+        if (!visible) {
+            // Hide it once, then skip it: nothing is sent or allocated for a hidden copy.
+            if (hidden[n]) return
+            hidden[n] = true
+            res.update(ids[n], Transform(Vector3(px, py, pz), SdkMath.quat(0f, 0f, 0f, 1f), Vector3(0f, 0f, 0f)))
+            return
+        }
+        hidden[n] = false
         // The SDK's math types are immutable, so each update allocates small objects.
-        val t = if (visible) {
-            Transform(Vector3(px, py, pz), SdkMath.quat(qx, qy, qz, qw), Vector3(sx, sy, sz))
-        } else {
-            Transform(Vector3(px, py, pz), SdkMath.quat(0f, 0f, 0f, 1f), Vector3(0f, 0f, 0f))
-        }
-        res.update(ids[n], t)
-        if (visible) {
-            sumRgb[grp * 3] += r; sumRgb[grp * 3 + 1] += g; sumRgb[grp * 3 + 2] += b
-            members[grp]++
-        }
+        res.update(ids[n], Transform(Vector3(px, py, pz), SdkMath.quat(qx, qy, qz, qw), Vector3(sx, sy, sz)))
+        sumRgb[grp * 3] += r; sumRgb[grp * 3 + 1] += g; sumRgb[grp * 3 + 2] += b
+        members[grp]++
     }
 
     /** Ends a frame: pushes each group's average glow to its material when it changed. */

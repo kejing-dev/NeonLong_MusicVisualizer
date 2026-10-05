@@ -3,7 +3,8 @@
 
     <!-- Control panel -->
     <string name="controls_title">Neon Lóng</string>
-    <string name="now_playing">Now playing</string>
+    <string name="hide_panel">Hide</string>
+    <string name="more_below">More ↓</string>
     <string name="status_demo">Demo · 104 BPM · A minor pentatonic</string>
     <string name="status_idle">Idle</string>
     <string name="status_time">%1$s / %2$s</string>
@@ -15,9 +16,10 @@
 
     <string name="section_source">Source</string>
     <string name="source_demo">Demo track</string>
-    <string name="source_file">Load music</string>
-    <string name="source_capture">Other apps</string>
-    <string name="source_mic">Microphone</string>
+    <string name="source_demo_short">Demo</string>
+    <string name="source_file">Files</string>
+    <string name="source_capture">Apps</string>
+    <string name="source_mic">Mic</string>
     <string name="coming_soon">Coming soon</string>
 
     <string name="section_palette">Palette</string>
@@ -35,8 +37,6 @@
     <string name="section_space">Space</string>
     <string name="space_room">Room</string>
     <string name="space_immersive">Immersive</string>
-
-    <string name="section_settings">Settings</string>
     <string name="open_settings">Settings</string>
     <string name="back">Back</string>
 

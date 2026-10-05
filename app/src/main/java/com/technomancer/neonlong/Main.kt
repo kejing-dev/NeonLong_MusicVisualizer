@@ -26,7 +26,8 @@ fun mainApp(scope: SpatialAppScope) =
         WindowContainer(
             CONTROLS_CONTAINER,
             form = Form.Planar,
-            defaultSize = WindowContainerSize(0.40f, 0.48f, 0f, LengthUnit.Meters),
+            // Sized to the panel's content: about 0.40 m of options with their gaps.
+            defaultSize = WindowContainerSize(0.40f, 0.42f, 0f, LengthUnit.Meters),
         ) { PicoTheme { ControlsWindow() } }
         WindowContainer(
             SAFETY_CONTAINER,

@@ -1,6 +1,7 @@
 package com.technomancer.neonlong.ui
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -21,6 +22,10 @@ import com.pico.spatial.ui.platform.LocalPhysicalLengthConverter
 @Composable
 fun minTarget(): Dp = LocalPhysicalLengthConverter.current.lengthToDp(0.032f, LengthUnit.Meters)
 
+/** Gap between one option and the next: 10 mm. */
+@Composable
+fun optionGap(): Dp = LocalPhysicalLengthConverter.current.lengthToDp(0.010f, LengthUnit.Meters)
+
 /** A section heading above a group of controls. */
 @Composable
 fun SectionTitle(text: String) {
@@ -29,6 +34,28 @@ fun SectionTitle(text: String) {
         style = PicoTheme.typography.titleSmall,
         modifier = Modifier.padding(top = 12.dp, bottom = 6.dp),
     )
+}
+
+/** Share of a form row's width taken by its label. */
+private const val LABEL_SHARE = 0.3f
+
+/**
+ * One line of the panel: the setting's name on the left (with an optional small note under
+ * it) and its control on the right, at least one hit target tall.
+ */
+@Composable
+fun FormRow(label: String, note: String? = null, control: @Composable () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().heightIn(min = minTarget()),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Column(modifier = Modifier.weight(LABEL_SHARE)) {
+            Text(text = label, style = PicoTheme.typography.titleSmall)
+            if (note != null) Text(text = note, style = PicoTheme.typography.bodyTiny)
+        }
+        Box(modifier = Modifier.weight(1f - LABEL_SHARE)) { control() }
+    }
 }
 
 /** A label with an optional second line and a switch on the right. */

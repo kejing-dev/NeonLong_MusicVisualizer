@@ -47,6 +47,7 @@ class InputSnapshotSystem : System() {
         lastBeatCount = snap.beatCount
         input.reducedMotion = reg.reducedMotion || reg.settings.current.reduceMotion
         reg.spectrumForPanel.copyFrom(snap)
+        input.dragonYaw = reg.dragonYaw
         val width = reg.volumeWidthMeters
         input.showSmallParts = reg.lod.showSmallParts(width)
         input.whiskerStride = reg.lod.whiskerStride(width)

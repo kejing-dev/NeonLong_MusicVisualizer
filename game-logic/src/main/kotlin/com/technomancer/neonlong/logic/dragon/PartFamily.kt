@@ -33,5 +33,5 @@ enum class PartFamily(val capacity: Int) {
     PEARL_SHELL(1),
     PEARL_RING(3),
     /** Breath particles drawn this frame (the newest of the pool). */
-    BREATH(160),
+    BREATH(320),
 }

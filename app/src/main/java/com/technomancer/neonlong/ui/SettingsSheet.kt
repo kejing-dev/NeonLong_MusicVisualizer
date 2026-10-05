@@ -1,5 +1,6 @@
 package com.technomancer.neonlong.ui
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -26,9 +27,9 @@ fun SettingsSheet(onBack: () -> Unit) {
     val reg = ServiceRegistry
     val navigator = LocalSpatialNavigator.current
     val s by reg.settings.state.collectAsState()
-    Column(modifier = Modifier.fillMaxWidth()) {
+    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(optionGap())) {
         Button(onClick = onBack, modifier = Modifier.heightIn(min = minTarget())) { Text(stringResource(R.string.back)) }
-        Text(stringResource(R.string.settings_title), style = PicoTheme.typography.titleLarge, modifier = Modifier.padding(vertical = 12.dp))
+        Text(stringResource(R.string.settings_title), style = PicoTheme.typography.titleLarge)
         SwitchRow(stringResource(R.string.reduce_motion), stringResource(R.string.reduce_motion_sub), s.reduceMotion) { on ->
             reg.uiSfx.select(); reg.settings.update { it.copy(reduceMotion = on) }
         }
@@ -52,7 +53,7 @@ fun SettingsSheet(onBack: () -> Unit) {
         Text(stringResource(R.string.about_body), style = PicoTheme.typography.bodyMedium)
         Button(
             onClick = { reg.uiSfx.select(); navigator.openSafety() },
-            modifier = Modifier.padding(top = 8.dp).heightIn(min = minTarget()),
+            modifier = Modifier.heightIn(min = minTarget()),
         ) { Text(stringResource(R.string.show_safety)) }
     }
 }
