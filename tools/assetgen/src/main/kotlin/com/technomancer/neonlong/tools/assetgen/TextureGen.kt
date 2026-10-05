@@ -281,25 +281,6 @@ object TextureGen {
         return img
     }
 
-    /** Soft round glow (64²): alpha 1 at the center, 0.5 at 30%, 0 at the edge. */
-    fun glow(): BufferedImage {
-        val n = 64
-        val img = BufferedImage(n, n, BufferedImage.TYPE_INT_ARGB)
-        for (y in 0 until n) for (x in 0 until n) {
-            val dx = (x + 0.5) / n * 2 - 1
-            val dy = (y + 0.5) / n * 2 - 1
-            val r = kotlin.math.sqrt(dx * dx + dy * dy)
-            val a = when {
-                r <= 0.3 -> 1 - (r / 0.3) * 0.5
-                r <= 1.0 -> 0.5 * (1 - (r - 0.3) / 0.7)
-                else -> 0.0
-            }
-            val ai = (max(0.0, a) * 255).roundToInt()
-            img.setRGB(x, y, (ai shl 24) or 0xffffff)
-        }
-        return img
-    }
-
     /**
      * The 龍 glyph (128²): transparent, a 4 px white border inset 4 px, and the character in
      * Noto Serif SC Black at 96 px with a soft 10 px glow. Uses [fontFile] if it exists,

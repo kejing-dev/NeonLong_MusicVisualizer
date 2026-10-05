@@ -8,8 +8,6 @@
     <string name="status_demo">演示曲 · 104 BPM · A 小调五声音阶</string>
     <string name="status_idle">空闲</string>
     <string name="status_time">%1$s / %2$s</string>
-    <string name="status_playing">播放中</string>
-    <string name="status_paused">已暂停</string>
     <string name="play">播放</string>
     <string name="pause">暂停</string>
     <string name="restart">从头播放</string>
@@ -71,7 +69,4 @@
     <!-- 提示 -->
     <string name="toast_safety_first">请先阅读安全提示。</string>
     <string name="toast_bad_file">无法播放该文件。请尝试 MP3、AAC、FLAC、OGG 或 WAV 格式。</string>
-
-    <!-- 徽章 -->
-    <string name="badge_hint">打开控制面板</string>
 </resources>

@@ -49,8 +49,6 @@ fun main(args: Array<String>) {
     val textures = listOf(
         "GEN_Facade" to TextureGen.facade(),
         "GEN_Armour" to TextureGen.armour(),
-        "GEN_ArmourBump" to TextureGen.armour(bump = true),
-        "GEN_Glow" to TextureGen.glow(),
         "GEN_BodySkin" to TextureGen.bodySkin(),
         "GEN_Halo" to TextureGen.halo(),
         "GEN_IBL_Night" to TextureGen.nightEnvironment(),

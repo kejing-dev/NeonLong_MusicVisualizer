@@ -8,8 +8,6 @@
     <string name="status_demo">Demo · 104 BPM · A minor pentatonic</string>
     <string name="status_idle">Idle</string>
     <string name="status_time">%1$s / %2$s</string>
-    <string name="status_playing">Playing</string>
-    <string name="status_paused">Paused</string>
     <string name="play">Play</string>
     <string name="pause">Pause</string>
     <string name="restart">Restart</string>
@@ -71,7 +69,4 @@
     <!-- Toasts -->
     <string name="toast_safety_first">Read the safety notice first.</string>
     <string name="toast_bad_file">Couldn\'t play that file. Try MP3, AAC, FLAC, OGG or WAV.</string>
-
-    <!-- Badge -->
-    <string name="badge_hint">Open controls</string>
 </resources>
