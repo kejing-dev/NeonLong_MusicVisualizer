@@ -47,7 +47,7 @@ import kotlinx.coroutines.launch
 /**
  * The control panel: a header with a Hide button, a Now playing card, transport, then one
  * line each for source, palette, view, sensitivity and space (name left, control right), and a
- * link to Settings, top to bottom. Settings open in place of the main page. The content
+ * link to Settings, top to bottom. Settings and the music page open in place of the main page. The content
  * scrolls under the header; a "More" button and a scroll bar show when there's more below.
  */
 @Composable
@@ -68,9 +68,10 @@ fun ControlPanel() {
             ) {
                 when (page) {
                     Page.MAIN -> {
-                        NowPlayingCard()
-                        TransportRow()
-                        SourceSection()
+                        val status = audioStatus()
+                        NowPlayingCard(status)
+                        TransportRow(status)
+                        SourceSection(status, onPickFiles = { page = Page.MUSIC })
                         PaletteSection()
                         ViewSection()
                         SensitivitySection()
@@ -81,6 +82,7 @@ fun ControlPanel() {
                         ) { Text(stringResource(R.string.open_settings)) }
                     }
                     Page.SETTINGS -> SettingsSheet(onBack = { ServiceRegistry.uiSfx.select(); page = Page.MAIN })
+                    Page.MUSIC -> MusicPage(onDone = { page = Page.MAIN })
                 }
                 Toasts()
             }
@@ -100,7 +102,7 @@ fun ControlPanel() {
     }
 }
 
-private enum class Page { MAIN, SETTINGS }
+private enum class Page { MAIN, SETTINGS, MUSIC }
 
 /** The status dot in the Now playing card, and the space between it and the title. */
 private val DOT_SIZE = 10.dp
@@ -122,23 +124,16 @@ private fun PanelHeader() {
     }
 }
 
-/** What's playing, how far in, and a status dot. Sits 6 mm in front of the panel. */
+/**
+ * What's playing (the demo or the user's file), how far in, and a status dot. Sits 6 mm in
+ * front of the panel.
+ */
 @Composable
-private fun NowPlayingCard() {
-    val reg = ServiceRegistry
+private fun NowPlayingCard(status: AudioStatus) {
     val lengths = LocalPhysicalLengthConverter.current
     val lift = lengths.lengthToDp(0.006f, LengthUnit.Meters)
-    var state by remember { mutableStateOf(reg.audio.state) }
-    var position by remember { mutableStateOf(0.0) }
-    LaunchedEffect(Unit) {
-        val periodMs = (reg.uiConfig.statusRefreshS * 1000).toLong().coerceAtLeast(50)
-        while (true) {
-            state = reg.audio.state
-            position = reg.audio.positionS
-            delay(periodMs)
-        }
-    }
-    val idle = state == AudioEngine.State.IDLE
+    val idle = status.state == AudioEngine.State.IDLE
+    val file = status.source == AudioEngine.Source.FILE
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -147,24 +142,36 @@ private fun NowPlayingCard() {
             .padding(horizontal = 14.dp, vertical = 10.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(DOT_GAP)) {
-            val dot = when (state) {
+            val dot = when (status.state) {
                 AudioEngine.State.PLAYING -> Color(0xFF3DDC84)
                 AudioEngine.State.PAUSED -> Color(0xFFFFB627)
                 // Dark enough to show against the card when nothing is playing.
                 AudioEngine.State.IDLE -> Color(0xFF4A4650)
             }
             Box(Modifier.size(DOT_SIZE).background(dot, CircleShape))
-            Text(stringResource(R.string.source_demo), style = PicoTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+            Text(
+                text = if (file) status.fileTitle.orEmpty() else stringResource(R.string.source_demo),
+                style = PicoTheme.typography.titleMedium,
+                maxLines = 1,
+                modifier = Modifier.weight(1f),
+            )
             // The time sits on the title's line, so the card stays two lines tall.
             if (!idle) {
                 Text(
-                    text = stringResource(R.string.status_time, formatTime(position), formatTime(reg.audio.durationS)),
+                    text = stringResource(R.string.status_time, formatTime(status.positionS.toDouble()), formatTime(status.durationS.toDouble())),
                     style = PicoTheme.typography.bodySmall,
                 )
             }
         }
         Text(
-            text = if (idle) stringResource(R.string.status_idle) else stringResource(R.string.status_demo),
+            text = stringResource(
+                when {
+                    status.loading -> R.string.status_loading
+                    idle -> R.string.status_idle
+                    file -> R.string.status_file
+                    else -> R.string.status_demo
+                },
+            ),
             style = PicoTheme.typography.bodySmall,
             // Lined up under the title, past the status dot.
             modifier = Modifier.padding(start = DOT_SIZE + DOT_GAP),
@@ -174,17 +181,11 @@ private fun NowPlayingCard() {
 
 /** Play / Pause and Restart. Before the safety notice has been read, Play opens it instead. */
 @Composable
-private fun TransportRow() {
+private fun TransportRow(status: AudioStatus) {
     val reg = ServiceRegistry
     val navigator = LocalSpatialNavigator.current
     val settings by reg.settings.state.collectAsState()
-    var playing by remember { mutableStateOf(reg.audio.state == AudioEngine.State.PLAYING) }
-    LaunchedEffect(Unit) {
-        while (true) {
-            playing = reg.audio.state == AudioEngine.State.PLAYING
-            delay(100)
-        }
-    }
+    val playing = status.state == AudioEngine.State.PLAYING
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -197,14 +198,13 @@ private fun TransportRow() {
                     navigator.openSafety()
                 } else {
                     reg.events.post(InputEvents.PLAY_PAUSE)
-                    playing = !playing
                 }
             },
             modifier = Modifier.weight(1f).heightIn(min = minTarget()),
         ) { Text(stringResource(if (playing) R.string.pause else R.string.play)) }
         Button(
             onClick = { reg.uiSfx.select(); reg.events.post(InputEvents.RESTART) },
-            enabled = settings.safetySeen && reg.audio.state != AudioEngine.State.IDLE,
+            enabled = settings.safetySeen && status.state != AudioEngine.State.IDLE,
             modifier = Modifier.weight(1f).heightIn(min = minTarget()),
         ) { Text(stringResource(R.string.restart)) }
     }

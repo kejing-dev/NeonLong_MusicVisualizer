@@ -21,6 +21,14 @@ object DebugFlags {
         false
     }
 
+    /** Reads a text system property (set with `adb shell setprop <name> <value>`), or null if unset. */
+    fun systemString(name: String): String? = try {
+        val c = Class.forName("android.os.SystemProperties")
+        (c.getMethod("get", String::class.java, String::class.java).invoke(null, name, "") as String).ifEmpty { null }
+    } catch (e: Exception) {
+        null
+    }
+
     /** True if the Activity hosting [context] was started with the given boolean extra. */
     fun intentFlag(context: Context, extra: String): Boolean {
         var c: Context? = context
