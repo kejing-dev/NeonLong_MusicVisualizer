@@ -7,14 +7,16 @@ import android.util.Log
 import com.pico.spatial.audio.SpatialAudioTrackExtension
 import com.pico.spatial.core.ecs.Entity
 import com.technomancer.neonlong.app.LOG_TAG
+import com.technomancer.neonlong.logic.audio.PcmTrack
 
 /**
- * Loops a mono float PCM buffer through an Android AudioTrack attached to [source] with the
+ * Loops a mono track held in memory through an Android AudioTrack attached to [source] with the
  * SDK's spatial-audio extension, so the music comes from the dragon. Unlike the SDK's own
  * audio player, AudioTrack reports exactly which sample is playing, which lets the visuals
  * follow what's audible. If the extension can't attach, it plays as normal stereo audio.
  */
-class SpatialDemoPlayer(private val samples: FloatArray, private val sampleRate: Int, source: Entity?) {
+class SpatialDemoPlayer(private val pcm: PcmTrack, source: Entity?) {
+    private val sampleRate = pcm.sampleRate
     private val extension = SpatialAudioTrackExtension()
     private val track: AudioTrack
     /** True if the track is spatialized from the dragon. */
@@ -60,7 +62,7 @@ class SpatialDemoPlayer(private val samples: FloatArray, private val sampleRate:
         spatial = ok
         track = builder.build()
         writer = Thread(::writeLoop, "NeonLong-demo-writer").apply { isDaemon = true; start() }
-        Log.i(LOG_TAG, "[audio] demo player ready: ${samples.size} samples at $sampleRate Hz, spatial=$spatial")
+        Log.i(LOG_TAG, "[audio] player ready: ${pcm.size} samples at $sampleRate Hz, spatial=$spatial")
     }
 
     fun play() {
@@ -91,7 +93,7 @@ class SpatialDemoPlayer(private val samples: FloatArray, private val sampleRate:
     /** Index into the loop of the sample being heard now. */
     fun positionIndex(): Int {
         val head = (track.playbackHeadPosition.toLong() and 0xffffffffL) - headBase
-        return Math.floorMod(head, samples.size.toLong()).toInt()
+        return Math.floorMod(head, pcm.size.toLong()).toInt()
     }
 
     fun release() {
@@ -116,11 +118,8 @@ class SpatialDemoPlayer(private val samples: FloatArray, private val sampleRate:
                 restartRequested = false
                 cursor = 0
             }
-            for (i in 0 until CHUNK) {
-                chunk[i] = samples[cursor]
-                cursor++
-                if (cursor == samples.size) cursor = 0
-            }
+            pcm.read(cursor, chunk, CHUNK)
+            cursor = (cursor + CHUNK) % pcm.size
             var off = 0
             while (off < CHUNK && running) {
                 val n = track.write(chunk, off, CHUNK - off, AudioTrack.WRITE_BLOCKING)

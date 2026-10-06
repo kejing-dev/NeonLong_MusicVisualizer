@@ -1,11 +1,14 @@
 package com.technomancer.neonlong.audio
 
 import android.content.Context
+import android.net.Uri
 import android.util.Log
 import com.pico.spatial.core.ecs.Entity
 import com.technomancer.neonlong.app.LOG_TAG
+import com.technomancer.neonlong.audio.sources.FileSource
+import com.technomancer.neonlong.audio.sources.LoadedFile
 import com.technomancer.neonlong.logic.audio.AnalysisPipeline
-import com.technomancer.neonlong.logic.audio.DecodedAudio
+import com.technomancer.neonlong.logic.audio.PcmTrack
 import com.technomancer.neonlong.logic.audio.SpectrumSnapshot
 import com.technomancer.neonlong.logic.audio.TripleBuffer
 import com.technomancer.neonlong.logic.audio.WavReader
@@ -14,9 +17,11 @@ import com.technomancer.neonlong.logic.state.Settings
 import com.technomancer.neonlong.logic.state.SettingsModel
 
 /**
- * Owns the music source and the analysis thread. The analysis runs at a fixed rate and
- * publishes a [SpectrumSnapshot] per hop: from the demo track while it plays (the window
- * ends at the sample being heard), otherwise from the idle breathing generator.
+ * Owns the music source and the analysis thread. The music is either the built-in demo track
+ * or one of the user's files, held in memory and played as a loop from the dragon. The
+ * analysis runs at a fixed rate and publishes a [SpectrumSnapshot] per hop: from the music
+ * while it plays (the window ends at the sample being heard), otherwise from the idle
+ * breathing generator.
  */
 class AudioEngine(
     private val context: Context,
@@ -25,16 +30,34 @@ class AudioEngine(
     private val settings: () -> Settings,
 ) {
     enum class State { IDLE, PLAYING, PAUSED }
+    enum class Source { DEMO, FILE }
+
+    /** A player and the audio it plays, swapped together so the analysis never mixes two tracks. */
+    private class Playing(val player: SpatialDemoPlayer, val track: PcmTrack)
 
     val snapshots = TripleBuffer { SpectrumSnapshot() }
 
     @Volatile var state = State.IDLE
         private set
 
-    @Volatile private var demo: DecodedAudio? = null
-    @Volatile private var player: SpatialDemoPlayer? = null
+    /** Which music is selected. */
+    @Volatile var source = Source.DEMO
+        private set
 
-    /** Length of the demo loop in seconds, once it has been loaded. */
+    /** Name of the user's file while [source] is FILE. */
+    @Volatile var fileTitle: String? = null
+        private set
+
+    /** True while a picked file is being decoded. */
+    @Volatile var loading = false
+        private set
+
+    private var demo: PcmTrack? = null
+    @Volatile private var selected: PcmTrack? = null
+    @Volatile private var playing: Playing? = null
+    @Volatile private var pending: LoadedFile? = null
+
+    /** Length of the selected music in seconds, once it has been loaded. */
     @Volatile var durationS = 0.0
         private set
 
@@ -54,7 +77,7 @@ class AudioEngine(
         if (!analysis.isAlive) analysis.start()
     }
 
-    /** Badge / Play button: starts the demo the first time, then toggles pause. */
+    /** Play button: starts the selected music the first time, then toggles pause. */
     fun togglePlay(dragonRoot: Entity?) {
         when (state) {
             State.PLAYING -> pause()
@@ -63,25 +86,25 @@ class AudioEngine(
     }
 
     fun play(dragonRoot: Entity?) {
-        val p = player ?: createPlayer(dragonRoot) ?: return
-        p.play()
+        val p = playing ?: createPlayer(dragonRoot) ?: return
+        p.player.play()
         state = State.PLAYING
-        Log.i(LOG_TAG, "[audio] demo playing")
+        Log.i(LOG_TAG, "[audio] ${source.name.lowercase()} playing")
     }
 
     /** Back to the start of the loop, keeping the play/pause state. */
     fun restart() {
-        val p = player ?: return
-        p.restart()
+        val p = playing ?: return
+        p.player.restart()
         positionS = 0.0
-        Log.i(LOG_TAG, "[audio] demo restarted")
+        Log.i(LOG_TAG, "[audio] restarted")
     }
 
     fun pause() {
         if (state != State.PLAYING) return
-        player?.pause()
+        playing?.player?.pause()
         state = State.PAUSED
-        Log.i(LOG_TAG, "[audio] demo paused")
+        Log.i(LOG_TAG, "[audio] paused")
     }
 
     /** The dragon was hidden or the app paused: pause, and stay paused until Play. */
@@ -93,24 +116,85 @@ class AudioEngine(
     }
 
     fun release() {
-        player?.release()
-        player = null
-        state = State.IDLE
+        stopPlayer()
     }
 
-    private fun createPlayer(dragonRoot: Entity?): SpatialDemoPlayer? = try {
-        val audio = demo ?: context.assets.open("audio/demo_104bpm.wav").use { WavReader.read(it) }.also {
-            demo = it
-            durationS = it.samples.size.toDouble() / it.sampleRate
-        }
-        SpatialDemoPlayer(audio.samples, audio.sampleRate, dragonRoot).also { player = it }
+    /**
+     * Decodes the picked file on a background thread. When it's ready, [onReady] is called
+     * (from that thread) and the caller starts it with [startLoadedFile] on the frame thread;
+     * if it can't be played, [onError] is called and the current music carries on.
+     */
+    fun loadFile(uri: Uri, onReady: () -> Unit, onError: () -> Unit) {
+        if (loading) return
+        loading = true
+        Thread({
+            try {
+                val start = System.nanoTime()
+                val file = FileSource.decode(context, uri, config.maxFileMinutes * 60)
+                Log.i(
+                    LOG_TAG,
+                    "[audio] file decoded: ${"%.1f".format(file.track.durationS)} s at ${file.track.sampleRate} Hz " +
+                        "in ${(System.nanoTime() - start) / 1_000_000} ms",
+                )
+                pending = file
+                onReady()
+            } catch (e: Throwable) {
+                Log.w(LOG_TAG, "[audio] can't play that file: ${e.javaClass.simpleName}: ${e.message}")
+                onError()
+            } finally {
+                loading = false
+            }
+        }, "NeonLong-file-decode").apply { isDaemon = true }.start()
+    }
+
+    /** Switches to the file decoded by [loadFile] and plays it. */
+    fun startLoadedFile(dragonRoot: Entity?) {
+        val file = pending ?: return
+        pending = null
+        stopPlayer()
+        selected = file.track
+        source = Source.FILE
+        fileTitle = file.title
+        durationS = file.track.durationS
+        play(dragonRoot)
+    }
+
+    /** Switches back to the demo track, playing if music was playing. */
+    fun useDemo(dragonRoot: Entity?) {
+        if (source == Source.DEMO) return
+        val wasPlaying = state == State.PLAYING
+        stopPlayer()
+        selected = null
+        source = Source.DEMO
+        fileTitle = null
+        durationS = demo?.durationS ?: 0.0
+        if (wasPlaying) play(dragonRoot)
+        Log.i(LOG_TAG, "[audio] back to the demo track")
+    }
+
+    private fun stopPlayer() {
+        val p = playing
+        playing = null
+        p?.player?.release()
+        state = State.IDLE
+        positionS = 0.0
+    }
+
+    private fun createPlayer(dragonRoot: Entity?): Playing? = try {
+        val track = selected ?: demo ?: context.assets.open("audio/demo_104bpm.wav").use { WavReader.read(it) }
+            .let { PcmTrack.ofFloats(it.samples, it.sampleRate) }
+            .also { demo = it }
+        durationS = track.durationS
+        Playing(SpatialDemoPlayer(track, dragonRoot), track).also { playing = it }
     } catch (e: Throwable) {
-        Log.e(LOG_TAG, "[audio] can't start the demo: ${e.message}")
+        Log.e(LOG_TAG, "[audio] can't start playback: ${e.message}")
         null
     }
 
     private fun analysisLoop() {
-        val pipeline = AnalysisPipeline(48_000, config)
+        var pipeline = AnalysisPipeline(DEMO_RATE, config)
+        var pipelineRate = DEMO_RATE
+        val window = FloatArray(config.fftSize)
         val periodNs = (1_000_000_000.0 / config.analysisRateHz).toLong()
         val dt = 1f / config.analysisRateHz
         var next = System.nanoTime()
@@ -118,22 +202,30 @@ class AudioEngine(
         var sumNs = 0L
         var maxNs = 0L
         var hops = 0
-        var wasPlaying = false
+        var last: Playing? = null
         while (true) {
             val start = System.nanoTime()
-            val p = player
-            val audio = demo
+            val p = playing
             val out = snapshots.writeSlot
-            SettingsModel.applyToAnalysis(settings(), pipeline.features)
-            if (state == State.PLAYING && p != null && audio != null) {
-                if (!wasPlaying) pipeline.reset()
-                val end = p.positionIndex()
-                positionS = end.toDouble() / audio.sampleRate
-                pipeline.hopAudio(audio.samples, end, dt, end.toDouble() / audio.sampleRate, out)
-                wasPlaying = true
+            if (state == State.PLAYING && p != null) {
+                if (p.track.sampleRate != pipelineRate) {
+                    // Files come in several sample rates; the band mapping depends on it.
+                    pipelineRate = p.track.sampleRate
+                    pipeline = AnalysisPipeline(pipelineRate, config)
+                    last = null
+                }
+                if (p !== last) pipeline.reset()
+                SettingsModel.applyToAnalysis(settings(), pipeline.features)
+                val end = p.player.positionIndex()
+                val position = end.toDouble() / p.track.sampleRate
+                positionS = position
+                p.track.window(end, window)
+                pipeline.hopWindow(window, dt, position, out)
+                last = p
             } else {
+                SettingsModel.applyToAnalysis(settings(), pipeline.features)
                 pipeline.hopIdle(t, dt, out)
-                wasPlaying = false
+                last = null
             }
             snapshots.publish()
             t += dt
@@ -156,5 +248,6 @@ class AudioEngine(
 
     private companion object {
         const val REPORT_HOPS = 300
+        const val DEMO_RATE = 48_000
     }
 }
